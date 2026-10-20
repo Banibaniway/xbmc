@@ -11,6 +11,9 @@ on:
 env:
   NDK_VERSION: "28.2.13676358"
   TOOLS: /home/runner/android-tools
+  # the runner image presets ANDROID_SDK_ROOT to its own SDK; Gradle refuses two different SDK paths
+  ANDROID_HOME: /home/runner/android-tools/android-sdk-linux
+  ANDROID_SDK_ROOT: /home/runner/android-tools/android-sdk-linux
   HOST: arm-linux-androideabi
 
 jobs:
