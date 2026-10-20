@@ -52,6 +52,8 @@ jobs:
 
       - name: Build dependencies
         run: |
+          set -o pipefail
+          trap 'm=$(tail -n 40 /tmp/depends.log | sed ":a;N;\$!ba;s/\n/%0A/g"); echo "::error title=depends failed::$m"' ERR
           cd tools/depends
           ./bootstrap
           ./configure --with-tarballs="$TOOLS/xbmc-tarballs" --host=$HOST \
@@ -62,15 +64,25 @@ jobs:
 
       - name: Configure Kodi
         run: |
+          set -o pipefail
+          trap 'm=$(tail -n 40 /tmp/cmake.log | sed ":a;N;\$!ba;s/\n/%0A/g"); echo "::error title=cmake failed::$m"' ERR
           mkdir -p "$HOME/kodi-build"
           make -C tools/depends/target/cmakebuildsys BUILD_DIR="$HOME/kodi-build" 2>&1 | tee /tmp/cmake.log
 
-      - name: Build Kodi + APK
+      - name: Build Kodi
         run: |
+          set -o pipefail
+          trap 'm=$(tail -n 60 /tmp/kodi.log | sed ":a;N;\$!ba;s/\n/%0A/g"); echo "::error title=kodi build failed::$m"' ERR
           cd "$HOME/kodi-build"
           make -j"$(nproc)" 2>&1 | tee /tmp/kodi.log
+
+      - name: Package APK
+        run: |
+          set -o pipefail
+          trap 'm=$(tail -n 60 /tmp/apk.log | sed ":a;N;\$!ba;s/\n/%0A/g"); echo "::error title=apk failed::$m"' ERR
+          cd "$HOME/kodi-build"
           make apk 2>&1 | tee /tmp/apk.log
-          find "$HOME/kodi-build" "$GITHUB_WORKSPACE" -name "*.apk" -print
+          echo "::notice title=apk files::$(find / -name '*.apk' -size +1M 2>/dev/null | head -10 | tr '\n' ' ')"
 
       - name: Collect APK
         run: |
