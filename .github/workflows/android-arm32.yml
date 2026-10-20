@@ -67,9 +67,8 @@ jobs:
       - name: configure-depends
         run: .github/ci-run.sh configure-depends env BUILDTHREADS=$(nproc) bash tools/buildsteps/android/configure-depends
 
-      - name: make-native-depends
-        run: .github/ci-run.sh make-native-depends env BUILDTHREADS=$(nproc) bash tools/buildsteps/android/make-native-depends
-
+      # make-depends builds native tools AND target libs. make-native-depends is NOT run on its own:
+      # it would tag tools/depends as built and make-depends would then skip the target libs.
       - name: make-depends
         run: .github/ci-run.sh make-depends env BUILDTHREADS=$(nproc) bash tools/buildsteps/android/make-depends
 
