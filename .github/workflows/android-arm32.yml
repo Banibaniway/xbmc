@@ -64,10 +64,27 @@ jobs:
 
       - name: Configure Kodi
         run: |
-          set -o pipefail
-          trap '{ echo "--- python in cmake.log"; grep -i python /tmp/cmake.log | head -20; echo "--- python in depends.log"; grep -i "python" /tmp/depends.log | tail -15; echo "--- prefix"; ls "$TOOLS/xbmc-depends"; find "$TOOLS/xbmc-depends" \( -iname "libpython*" -o -name Python.h -o -name "python3*.pc" \) 2>/dev/null | head -10; echo "--- cmake tail"; tail -n 15 /tmp/cmake.log; echo "--- CMakeError"; tail -n 20 "$HOME/kodi-build/CMakeFiles/CMakeError.log" 2>/dev/null; } > /tmp/diag.txt 2>&1; m=$(cat /tmp/diag.txt | sed ":a;N;\$!ba;s/\n/%0A/g"); echo "::error title=cmake diag::$m"' ERR
           mkdir -p "$HOME/kodi-build"
-          make -C tools/depends/target/cmakebuildsys BUILD_DIR="$HOME/kodi-build" 2>&1 | tee /tmp/cmake.log
+          set +e
+          make -C tools/depends/target/cmakebuildsys BUILD_DIR="$HOME/kodi-build" > /tmp/cmake.log 2>&1
+          rc=$?
+          echo "cmake rc=$rc"
+          exit $rc
+
+      - name: Diagnostics (python)
+        if: failure()
+        run: |
+          set +e
+          {
+            echo "--- python lines in cmake.log"; grep -i python /tmp/cmake.log | head -20
+            echo "--- python lines in depends.log"; grep -i python /tmp/depends.log | tail -15
+            echo "--- prefix"; ls "$TOOLS/xbmc-depends"
+            echo "--- python files"; find "$TOOLS/xbmc-depends" \( -iname "libpython*" -o -name Python.h -o -name "python3*.pc" \) 2>/dev/null | head -10
+            echo "--- cmake tail"; tail -n 15 /tmp/cmake.log
+            echo "--- CMakeError"; tail -n 20 "$HOME/kodi-build/CMakeFiles/CMakeError.log" 2>/dev/null
+          } > /tmp/diag.txt 2>&1
+          m=$(sed ':a;N;$!ba;s/\n/%0A/g' /tmp/diag.txt)
+          echo "::error title=cmake diag::$m"
 
       - name: Build Kodi
         run: |
