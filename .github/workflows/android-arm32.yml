@@ -1,0 +1,168 @@
+name: Android ARM32 APK
+
+# Build Kodi 22.0rc1 + patch for 32-bit ARM (Fire TV 4K Max gen 1).
+# Run manually: Actions > "Android ARM32 APK" > Run workflow.
+# Job 1 builds the dependencies (slow, cached, resumable: re-run if it hits the time limit).
+# Job 2 builds Kodi and uploads the APK as an artifact.
+
+on:
+  workflow_dispatch:
+
+env:
+  NDK_VERSION: "28.2.13676358"
+  TOOLS: ${{ github.workspace }}/../android-tools
+  HOST: arm-linux-androideabi
+
+jobs:
+  depends:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 355
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/share/boost /opt/hostedtoolcache/CodeQL /usr/local/lib/node_modules /usr/share/swift || true
+          sudo apt-get clean
+          df -h /
+
+      - name: Install packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y autoconf bison build-essential curl flex gawk gperf libcurl4-openssl-dev unzip zip zlib1g-dev lib32stdc++6 lib32z1 ccache cmake ninja-build
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Android SDK + NDK
+        run: |
+          mkdir -p "$TOOLS"
+          SDK="$TOOLS/android-sdk-linux"
+          mkdir -p "$SDK"
+          curl -sSL -o /tmp/cmdtools.zip https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
+          unzip -q /tmp/cmdtools.zip -d "$SDK/cmdline-tools-tmp"
+          mkdir -p "$SDK/cmdline-tools"
+          mv "$SDK/cmdline-tools-tmp/cmdline-tools" "$SDK/cmdline-tools/latest"
+          yes | "$SDK/cmdline-tools/latest/bin/sdkmanager" --sdk_root="$SDK" --licenses >/dev/null || true
+          "$SDK/cmdline-tools/latest/bin/sdkmanager" --sdk_root="$SDK" platform-tools "platforms;android-35" "build-tools;35.0.0" "ndk;$NDK_VERSION"
+          mkdir -p ~/.android
+          keytool -genkey -keystore ~/.android/debug.keystore -alias androiddebugkey -dname "CN=Android Debug,O=Android,C=US" -keypass android -storepass android -keyalg RSA -keysize 2048 -validity 10000 || true
+
+      - name: Restore dependencies cache
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            ${{ github.workspace }}/../android-tools/xbmc-depends
+            ${{ github.workspace }}/../android-tools/xbmc-tarballs
+            tools/depends/target
+            tools/depends/native
+          key: depends-arm32-v1-${{ github.run_id }}
+          restore-keys: depends-arm32-v1-
+
+      - name: Build dependencies (stops cleanly before the 6h limit)
+        run: |
+          cd tools/depends
+          ./bootstrap
+          ./configure --with-tarballs="$TOOLS/xbmc-tarballs" --host=$HOST \
+            --with-sdk-path="$TOOLS/android-sdk-linux" --prefix="$TOOLS/xbmc-depends" \
+            --enable-debug=no --disable-ccache
+          set +e
+          timeout 315m make -j"$(nproc)" 2>&1 | tee /tmp/depends.log
+          tail -n 5 /tmp/depends.log
+          if grep -q "Dependencies built successfully" /tmp/depends.log; then
+            echo "DEPENDS_OK=1" >> "$GITHUB_ENV"
+          else
+            echo "Dependencies NOT finished: cache will be saved, re-run the workflow to continue."
+          fi
+
+      - name: Save dependencies cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            ${{ github.workspace }}/../android-tools/xbmc-depends
+            ${{ github.workspace }}/../android-tools/xbmc-tarballs
+            tools/depends/target
+            tools/depends/native
+          key: depends-arm32-v1-${{ github.run_id }}
+
+      - name: Fail if dependencies are not complete
+        if: env.DEPENDS_OK != '1'
+        run: exit 1
+
+  kodi:
+    needs: depends
+    runs-on: ubuntu-24.04
+    timeout-minutes: 355
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/share/boost /opt/hostedtoolcache/CodeQL /usr/share/swift || true
+          sudo apt-get clean
+
+      - name: Install packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y autoconf bison build-essential curl flex gawk gperf libcurl4-openssl-dev unzip zip zlib1g-dev lib32stdc++6 lib32z1 cmake ninja-build
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Android SDK + NDK
+        run: |
+          mkdir -p "$TOOLS"
+          SDK="$TOOLS/android-sdk-linux"
+          mkdir -p "$SDK"
+          curl -sSL -o /tmp/cmdtools.zip https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
+          unzip -q /tmp/cmdtools.zip -d "$SDK/cmdline-tools-tmp"
+          mkdir -p "$SDK/cmdline-tools"
+          mv "$SDK/cmdline-tools-tmp/cmdline-tools" "$SDK/cmdline-tools/latest"
+          yes | "$SDK/cmdline-tools/latest/bin/sdkmanager" --sdk_root="$SDK" --licenses >/dev/null || true
+          "$SDK/cmdline-tools/latest/bin/sdkmanager" --sdk_root="$SDK" platform-tools "platforms;android-35" "build-tools;35.0.0" "ndk;$NDK_VERSION"
+          mkdir -p ~/.android
+          keytool -genkey -keystore ~/.android/debug.keystore -alias androiddebugkey -dname "CN=Android Debug,O=Android,C=US" -keypass android -storepass android -keyalg RSA -keysize 2048 -validity 10000 || true
+
+      - name: Restore dependencies cache
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            ${{ github.workspace }}/../android-tools/xbmc-depends
+            ${{ github.workspace }}/../android-tools/xbmc-tarballs
+            tools/depends/target
+            tools/depends/native
+          key: depends-arm32-v1-${{ github.run_id }}
+          restore-keys: depends-arm32-v1-
+          fail-on-cache-miss: true
+
+      - name: Configure Kodi
+        run: |
+          cd tools/depends
+          ./bootstrap
+          ./configure --with-tarballs="$TOOLS/xbmc-tarballs" --host=$HOST \
+            --with-sdk-path="$TOOLS/android-sdk-linux" --prefix="$TOOLS/xbmc-depends" \
+            --enable-debug=no --disable-ccache
+          cd ../..
+          mkdir -p "$HOME/kodi-build"
+          make -C tools/depends/target/cmakebuildsys BUILD_DIR="$HOME/kodi-build"
+
+      - name: Build Kodi + APK
+        run: |
+          cd "$HOME/kodi-build"
+          make -j"$(nproc)"
+          make apk
+          find "$HOME/kodi-build" "$GITHUB_WORKSPACE" -name "*.apk" -print
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: kodi-22.0rc1-arm32-fix-black-gui
+          path: |
+            ${{ github.workspace }}/**/*.apk
+            ~/kodi-build/**/*.apk
+          if-no-files-found: error
