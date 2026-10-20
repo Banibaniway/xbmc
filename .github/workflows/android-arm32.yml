@@ -1,6 +1,7 @@
 name: Android ARM32 APK
 
-# Build Kodi 22.0rc1 + GUI fix for 32-bit ARM (Fire TV 4K Max gen 1).
+# Build Kodi 22.0rc1 + GUI fix for 32-bit ARM (Fire TV 4K Max gen 1),
+# using Kodi's own CI build steps (tools/buildsteps/android/*), as the Jenkins CI does.
 # Runs on every push to this branch. The APK is uploaded as an artifact.
 
 on:
@@ -9,12 +10,20 @@ on:
     branches: [fix-black-gui-surface]
 
 env:
+  # variables read by tools/buildsteps/defaultenv and the android build steps
+  WORKSPACE: ${{ github.workspace }}
+  Configuration: Release
   NDK_VERSION: "28.2.13676358"
-  TOOLS: /home/runner/android-tools
-  # the runner image presets ANDROID_SDK_ROOT to its own SDK; Gradle refuses two different SDK paths
+  SDK_PATH: /home/runner/android-tools/android-sdk-linux
+  TARBALLS: /home/runner/android-tools/xbmc-tarballs
+  # Gradle refuses two different SDK paths; the runner image presets ANDROID_SDK_ROOT
   ANDROID_HOME: /home/runner/android-tools/android-sdk-linux
   ANDROID_SDK_ROOT: /home/runner/android-tools/android-sdk-linux
-  HOST: arm-linux-androideabi
+  # file name of the APK (getBuildRevDateStr)
+  BUILD_TIMESTAMP: ${{ github.run_number }}
+  GIT_COMMIT: ${{ github.sha }}
+  Revision: fix-black-gui
+  BUILD_ID: ${{ github.run_id }}
 
 jobs:
   build:
@@ -41,80 +50,49 @@ jobs:
 
       - name: Android SDK + NDK
         run: |
-          mkdir -p "$TOOLS"
-          SDK="$TOOLS/android-sdk-linux"
-          mkdir -p "$SDK"
+          mkdir -p "$SDK_PATH" "$TARBALLS"
           curl -sSL -o /tmp/cmdtools.zip https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
-          unzip -q /tmp/cmdtools.zip -d "$SDK/cmdline-tools-tmp"
-          mkdir -p "$SDK/cmdline-tools"
-          mv "$SDK/cmdline-tools-tmp/cmdline-tools" "$SDK/cmdline-tools/latest"
-          yes | "$SDK/cmdline-tools/latest/bin/sdkmanager" --sdk_root="$SDK" --licenses >/dev/null || true
-          "$SDK/cmdline-tools/latest/bin/sdkmanager" --sdk_root="$SDK" platform-tools "platforms;android-35" "build-tools;35.0.0" "ndk;$NDK_VERSION"
+          unzip -q /tmp/cmdtools.zip -d "$SDK_PATH/cmdline-tools-tmp"
+          mkdir -p "$SDK_PATH/cmdline-tools"
+          mv "$SDK_PATH/cmdline-tools-tmp/cmdline-tools" "$SDK_PATH/cmdline-tools/latest"
+          yes | "$SDK_PATH/cmdline-tools/latest/bin/sdkmanager" --sdk_root="$SDK_PATH" --licenses >/dev/null || true
+          "$SDK_PATH/cmdline-tools/latest/bin/sdkmanager" --sdk_root="$SDK_PATH" platform-tools "platforms;android-35" "build-tools;35.0.0" "ndk;$NDK_VERSION"
           mkdir -p ~/.android
           keytool -genkey -keystore ~/.android/debug.keystore -alias androiddebugkey -dname "CN=Android Debug,O=Android,C=US" -keypass android -storepass android -keyalg RSA -keysize 2048 -validity 10000 || true
 
-      - name: Build dependencies
-        run: |
-          set -o pipefail
-          trap 'm=$(tail -n 40 /tmp/depends.log | sed ":a;N;\$!ba;s/\n/%0A/g"); echo "::error title=depends failed::$m"' ERR
-          cd tools/depends
-          ./bootstrap
-          ./configure --with-tarballs="$TOOLS/xbmc-tarballs" --host=$HOST \
-            --with-sdk-path="$TOOLS/android-sdk-linux" --prefix="$TOOLS/xbmc-depends" \
-            --enable-debug=no --disable-ccache
-          make -j"$(nproc)" 2>&1 | tee /tmp/depends.log
-          grep -q "Dependencies built successfully" /tmp/depends.log
+      # --- Kodi's own build steps (same order as the Jenkins job) ---
+      - name: prepare-depends
+        run: .github/ci-run.sh prepare-depends env BUILDTHREADS=$(nproc) bash tools/buildsteps/android/prepare-depends
 
-      - name: Configure Kodi
-        run: |
-          mkdir -p "$HOME/kodi-build"
-          set +e
-          make -C tools/depends/target/cmakebuildsys BUILD_DIR="$HOME/kodi-build" > /tmp/cmake.log 2>&1
-          rc=$?
-          echo "cmake rc=$rc"
-          exit $rc
+      - name: configure-depends
+        run: .github/ci-run.sh configure-depends env BUILDTHREADS=$(nproc) bash tools/buildsteps/android/configure-depends
 
-      - name: Diagnostics (python)
-        if: failure()
-        run: |
-          set +e
-          {
-            echo "--- python lines in cmake.log"; grep -i python /tmp/cmake.log | head -20
-            echo "--- python lines in depends.log"; grep -i python /tmp/depends.log | tail -15
-            echo "--- prefix"; ls "$TOOLS/xbmc-depends"
-            echo "--- python files"; find "$TOOLS/xbmc-depends" \( -iname "libpython*" -o -name Python.h -o -name "python3*.pc" \) 2>/dev/null | head -10
-            echo "--- cmake tail"; tail -n 15 /tmp/cmake.log
-            echo "--- CMakeError"; tail -n 20 "$HOME/kodi-build/CMakeFiles/CMakeError.log" 2>/dev/null
-          } > /tmp/diag.txt 2>&1
-          m=$(sed ':a;N;$!ba;s/\n/%0A/g' /tmp/diag.txt)
-          echo "::error title=cmake diag::$m"
+      - name: make-native-depends
+        run: .github/ci-run.sh make-native-depends env BUILDTHREADS=$(nproc) bash tools/buildsteps/android/make-native-depends
 
-      - name: Build Kodi
-        run: |
-          set -o pipefail
-          trap 'm=$(tail -n 60 /tmp/kodi.log | sed ":a;N;\$!ba;s/\n/%0A/g"); echo "::error title=kodi build failed::$m"' ERR
-          cd "$HOME/kodi-build"
-          make -j"$(nproc)" 2>&1 | tee /tmp/kodi.log
+      - name: make-depends
+        run: .github/ci-run.sh make-depends env BUILDTHREADS=$(nproc) bash tools/buildsteps/android/make-depends
 
-      - name: Package APK
-        run: |
-          set -o pipefail
-          trap 'm=$(tail -n 60 /tmp/apk.log | sed ":a;N;\$!ba;s/\n/%0A/g"); echo "::error title=apk failed::$m"' ERR
-          cd "$HOME/kodi-build"
-          make apk 2>&1 | tee /tmp/apk.log
-          echo "::notice title=apk files::$(find / -name '*.apk' -size +1M 2>/dev/null | head -10 | tr '\n' ' ')"
+      - name: prepare-xbmc
+        run: .github/ci-run.sh prepare-xbmc env BUILDTHREADS=$(nproc) bash tools/buildsteps/android/prepare-xbmc
 
-      - name: Collect APK
+      - name: configure-xbmc
+        run: .github/ci-run.sh configure-xbmc env BUILDTHREADS=$(nproc) bash tools/buildsteps/android/configure-xbmc
+
+      - name: make-xbmc
+        run: .github/ci-run.sh make-xbmc env BUILDTHREADS=$(nproc) bash tools/buildsteps/android/make-xbmc
+
+      - name: package
         run: |
-          mkdir -p /tmp/out
-          find "$HOME/kodi-build" "$GITHUB_WORKSPACE" -name "*.apk" -exec cp {} /tmp/out/ \;
-          ls -l /tmp/out
+          .github/ci-run.sh package env BUILDTHREADS=$(nproc) bash tools/buildsteps/android/package
+          ls -l "$WORKSPACE"/*.apk
+          echo "::notice title=apk files::$(ls -l "$WORKSPACE"/*.apk | tr '\n' ' ')"
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: kodi-22.0rc1-arm32-fix-black-gui
-          path: /tmp/out/*.apk
+          path: ${{ github.workspace }}/kodi-*.apk
           if-no-files-found: error
 
       - name: Upload logs
