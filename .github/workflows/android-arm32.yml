@@ -10,7 +10,7 @@ on:
 
 env:
   NDK_VERSION: "28.2.13676358"
-  TOOLS: ${{ github.workspace }}/../android-tools
+  TOOLS: /home/runner/android-tools
   HOST: arm-linux-androideabi
 
 jobs:
