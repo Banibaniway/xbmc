@@ -65,6 +65,7 @@ jobs:
       - name: Configure Kodi
         run: |
           set -o pipefail
+          trap '{ echo "--- python in cmake.log"; grep -i python /tmp/cmake.log | head -20; echo "--- python in depends.log"; grep -i "python" /tmp/depends.log | tail -15; echo "--- prefix"; ls "$TOOLS/xbmc-depends"; find "$TOOLS/xbmc-depends" \( -iname "libpython*" -o -name Python.h -o -name "python3*.pc" \) 2>/dev/null | head -10; echo "--- CMakeError"; tail -n 20 "$HOME/kodi-build/CMakeFiles/CMakeError.log" 2>/dev/null; } > /tmp/diag.txt 2>&1; m=$(cat /tmp/diag.txt | sed ":a;N;\$!ba;s/\n/%0A/g"); echo "::error title=cmake diag::$m"' ERR
           trap 'm=$(tail -n 40 /tmp/cmake.log | sed ":a;N;\$!ba;s/\n/%0A/g"); echo "::error title=cmake failed::$m"' ERR
           mkdir -p "$HOME/kodi-build"
           make -C tools/depends/target/cmakebuildsys BUILD_DIR="$HOME/kodi-build" 2>&1 | tee /tmp/cmake.log
