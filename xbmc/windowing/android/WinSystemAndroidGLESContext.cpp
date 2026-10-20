@@ -140,6 +140,11 @@ void CWinSystemAndroidGLESContext::PresentRenderImpl(bool rendered)
   // we can't actually do anything about it
   if (rendered && !m_pGLContext.TrySwapBuffers())
     CEGLUtils::Log(LOGERROR, "eglSwapBuffers failed");
+  else if (rendered && m_framesToFullRedraw > 0)
+  {
+    --m_framesToFullRedraw;
+    CLog::LogF(LOGDEBUG, "full GUI redraw frame presented, {} remaining", m_framesToFullRedraw);
+  }
 
   CXBMCApp::Get().WaitVSync(1000);
 }
@@ -175,6 +180,11 @@ std::unique_ptr<CVideoSync> CWinSystemAndroidGLESContext::GetVideoSync(CVideoRef
   return pVSync;
 }
 
+int CWinSystemAndroidGLESContext::GetBufferAge()
+{
+  return m_framesToFullRedraw > 0 ? 0 : CWinSystemBase::GetBufferAge();
+}
+
 bool CWinSystemAndroidGLESContext::CreateSurface()
 {
   if (!m_pGLContext.CreateSurface(static_cast<EGLNativeWindowType>(m_nativeWindow->GetWindow()),
@@ -192,6 +202,11 @@ bool CWinSystemAndroidGLESContext::CreateSurface()
     else
       return false;
   }
+
+  // new surface => undefined buffers (swapchain depth is up to 3-4 on Android)
+  m_framesToFullRedraw = 6;
+  CLog::LogF(LOGDEBUG, "new EGL surface created: forcing full GUI redraw for {} presented frames",
+             m_framesToFullRedraw);
 
 #if EGL_EXT_surface_SMPTE2086_metadata
   if (m_displayMetadata)

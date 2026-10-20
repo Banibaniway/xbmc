@@ -1624,12 +1624,32 @@ void CApplication::FrameMove(bool processEvents, bool processGUI)
     if (!m_bStop)
       CServiceBroker::GetGUI()->GetWindowManager().Process(CTimeUtils::GetFrameTime());
 
+    // The clear colour of the fullscreen video window depends on IsRenderingVideoLayer()
+    // (transparent when the video lives on its own layer, opaque black otherwise). If that
+    // state flips while nothing else is dirty, the dirty-driven skip below would keep an
+    // outdated (possibly opaque black) frame on screen: force one GUI redraw on every change.
+    {
+      static bool s_lastVideoLayer = false;
+      const bool videoLayer = appPlayer->IsRenderingVideoLayer();
+      if (videoLayer != s_lastVideoLayer)
+      {
+        CLog::LogF(LOGDEBUG, "video layer state changed to {}, marking GUI dirty", videoLayer);
+        CServiceBroker::GetGUI()->GetWindowManager().MarkDirty();
+        s_lastVideoLayer = videoLayer;
+      }
+    }
+
     // Dirty-driven skip: on paths with a persistent framebuffer (D2P plane or
     // HDR GUI compositing FBO), skip Render when no controls dirtied themselves
     // this frame. The persistence keeps the previous OSD on screen for free.
     if (!m_skipGuiRender && appPlayer->IsRenderingVideoLayer() &&
         !CServiceBroker::GetGUI()->GetWindowManager().HasDirtyRegions())
-      m_skipGuiRender = true;
+    {
+      if (CServiceBroker::GetWinSystem()->GetBufferAge() != 0)
+        m_skipGuiRender = true;
+      else
+        CLog::LogF(LOGDEBUG, "GUI render not skipped: buffer age is 0 (fresh surface)");
+    }
     CServiceBroker::GetGUI()->GetWindowManager().FrameMove();
   }
 

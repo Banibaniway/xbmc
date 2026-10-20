@@ -45,6 +45,10 @@ public:
   EGLSurface GetEGLSurface() const;
   EGLContext GetEGLContext() const;
   EGLConfig  GetEGLConfig() const;
+
+  // A freshly created EGL surface has undefined buffer content: report age 0 until
+  // every buffer of the swapchain has been fully redrawn once.
+  int GetBufferAge() override;
 protected:
   void SetVSyncImpl(bool enable) override;
   void PresentRenderImpl(bool rendered) override;
@@ -54,6 +58,7 @@ private:
 
   CEGLContextUtils m_pGLContext;
   bool m_hasHDRConfig = false;
+  int m_framesToFullRedraw = 0;
 
   std::unique_ptr<AVMasteringDisplayMetadata> m_displayMetadata;
   std::unique_ptr<AVContentLightMetadata> m_lightMetadata;
