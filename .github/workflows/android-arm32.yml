@@ -1,12 +1,14 @@
 name: Android ARM32 APK
 
 # Build Kodi 22.0rc1 + patch for 32-bit ARM (Fire TV 4K Max gen 1).
-# Run manually: Actions > "Android ARM32 APK" > Run workflow.
+# Runs on every push to this branch (and manually if the workflow is on the default branch).
 # Job 1 builds the dependencies (slow, cached, resumable: re-run if it hits the time limit).
 # Job 2 builds Kodi and uploads the APK as an artifact.
 
 on:
   workflow_dispatch:
+  push:
+    branches: [fix-black-gui-surface]
 
 env:
   NDK_VERSION: "28.2.13676358"
