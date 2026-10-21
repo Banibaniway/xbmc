@@ -43,6 +43,7 @@
 #include "application/ApplicationMessageHandling.h"
 #include "application/ApplicationPlay.h"
 #include "application/ApplicationPlayer.h"
+#include "application/GuiFixSwitch.h"
 #include "application/ApplicationPowerHandling.h"
 #include "application/ApplicationSkinHandling.h"
 #include "application/ApplicationStackHelper.h"
@@ -1650,8 +1651,10 @@ void CApplication::FrameMove(bool processEvents, bool processGUI)
       const bool videoLayer = appPlayer->IsRenderingVideoLayer();
       if (videoLayer != s_lastVideoLayer)
       {
-        CLog::LogF(LOGINFO, "video layer state changed to {}, marking GUI dirty", videoLayer);
-        CServiceBroker::GetGUI()->GetWindowManager().MarkDirty();
+        CLog::LogF(LOGINFO, "video layer state changed to {} (GUI fix {})", videoLayer,
+                   KODI::GUIFIX::Enabled() ? "ON" : "OFF");
+        if (KODI::GUIFIX::Enabled())
+          CServiceBroker::GetGUI()->GetWindowManager().MarkDirty();
         s_lastVideoLayer = videoLayer;
       }
     }

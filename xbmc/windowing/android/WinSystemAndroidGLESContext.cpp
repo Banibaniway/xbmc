@@ -12,6 +12,7 @@
 #include "VideoSyncAndroid.h"
 #include "cores/VideoPlayer/DVDCodecs/Video/DVDVideoCodec.h"
 #include "threads/SingleLock.h"
+#include "application/GuiFixSwitch.h"
 #include "utils/log.h"
 #include "windowing/WindowSystemFactory.h"
 
@@ -182,7 +183,8 @@ std::unique_ptr<CVideoSync> CWinSystemAndroidGLESContext::GetVideoSync(CVideoRef
 
 int CWinSystemAndroidGLESContext::GetBufferAge()
 {
-  return m_framesToFullRedraw > 0 ? 0 : CWinSystemBase::GetBufferAge();
+  return (m_framesToFullRedraw > 0 && KODI::GUIFIX::Enabled()) ? 0
+                                                                : CWinSystemBase::GetBufferAge();
 }
 
 bool CWinSystemAndroidGLESContext::CreateSurface()
@@ -204,7 +206,7 @@ bool CWinSystemAndroidGLESContext::CreateSurface()
   }
 
   // new surface => undefined buffers (swapchain depth is up to 3-4 on Android)
-  m_framesToFullRedraw = 6;
+  m_framesToFullRedraw = KODI::GUIFIX::Enabled() ? 6 : 0;
   {
     EGLint w = 0, h = 0, swap = 0;
     eglQuerySurface(m_pGLContext.GetEGLDisplay(), m_pGLContext.GetEGLSurface(), EGL_WIDTH, &w);
@@ -215,8 +217,9 @@ bool CWinSystemAndroidGLESContext::CreateSurface()
                h, swap, m_pGLContext.GetConfigAttrib(EGL_ALPHA_SIZE),
                static_cast<int>(m_HDRColorSpace));
   }
-  CLog::LogF(LOGINFO, "new EGL surface created: forcing full GUI redraw for {} presented frames",
-             m_framesToFullRedraw);
+  CLog::LogF(LOGINFO,
+             "new EGL surface created: GUI fix {}, forcing full GUI redraw for {} presented frames",
+             KODI::GUIFIX::Enabled() ? "ON" : "OFF", m_framesToFullRedraw);
 
 #if EGL_EXT_surface_SMPTE2086_metadata
   if (m_displayMetadata)

@@ -21,6 +21,7 @@
 #include "application/Application.h"
 #include "application/ApplicationEnums.h"
 #include "application/ApplicationPlayer.h"
+#include "application/GuiFixSwitch.h"
 #include "application/ApplicationPowerHandling.h"
 #include "application/ApplicationSkinHandling.h"
 #include "application/ApplicationStackHelper.h"
@@ -186,8 +187,8 @@ void CApplicationMessageHandling::OnApplicationMessage(MESSAGING::ThreadMessage*
       *static_cast<bool*>(pMsg->lpVoid) =
           m_app.InitWindow(CServiceBroker::GetWinSystem()->GetGfxContext().GetVideoResolution());
       m_app.GetComponent<CApplicationPowerHandling>()->SetRenderGUI(true);
-      CLog::LogF(LOGINFO, "display setup done, marking GUI dirty");
-      if (CGUIComponent* gui = CServiceBroker::GetGUI())
+      CLog::LogF(LOGINFO, "display setup done, GUI fix {}", KODI::GUIFIX::Enabled() ? "ON" : "OFF");
+      if (CGUIComponent* gui = CServiceBroker::GetGUI(); gui && KODI::GUIFIX::Enabled())
         gui->GetWindowManager().MarkDirty();
       break;
 
