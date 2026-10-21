@@ -1535,6 +1535,23 @@ void CApplication::UnlockFrameMoveGuard()
 
 void CApplication::FrameMove(bool processEvents, bool processGUI)
 {
+  {
+    // diagnostic: report (bounded) stalls of the main loop
+    static std::chrono::steady_clock::time_point s_lastFrameMove;
+    static int s_gapReports = 0;
+    const auto nowGap = std::chrono::steady_clock::now();
+    if (s_lastFrameMove.time_since_epoch().count() != 0 && s_gapReports < 40)
+    {
+      const auto gapMs =
+          std::chrono::duration_cast<std::chrono::milliseconds>(nowGap - s_lastFrameMove).count();
+      if (gapMs > 150)
+      {
+        CLog::LogF(LOGINFO, "main loop gap: {} ms since previous frame", gapMs);
+        ++s_gapReports;
+      }
+    }
+    s_lastFrameMove = nowGap;
+  }
   const auto appPlayer = GetComponent<CApplicationPlayer>();
   bool renderGUI = GetComponent<CApplicationPowerHandling>()->GetRenderGUI();
   if (processEvents)
@@ -1654,15 +1671,41 @@ void CApplication::FrameMove(bool processEvents, bool processGUI)
       // diagnostic: log (bounded) when the GUI draw/skip decision changes while the video layer is on
       static int s_skipState = -1;
       static int s_transitions = 0;
+      static std::chrono::steady_clock::time_point s_layerStart;
+      static std::chrono::steady_clock::time_point s_lastReport;
+      static int s_drawn = 0;
+      static int s_skipped = 0;
+      static int s_reports = 0;
       if (appPlayer->IsRenderingVideoLayer())
       {
+        const auto nowDiag = std::chrono::steady_clock::now();
         const int state = m_skipGuiRender ? 1 : 0;
+        if (s_skipState == -1)
+        {
+          s_layerStart = nowDiag;
+          s_lastReport = nowDiag;
+          s_drawn = s_skipped = s_reports = 0;
+        }
         if (state != s_skipState && s_transitions < 60)
         {
           CLog::LogF(LOGINFO, "GUI render {} while video layer is on (#{})",
                      m_skipGuiRender ? "skipped" : "drawn", ++s_transitions);
         }
         s_skipState = state;
+        if (m_skipGuiRender)
+          ++s_skipped;
+        else
+          ++s_drawn;
+        if (s_reports < 20 && nowDiag - s_lastReport >= std::chrono::seconds(1))
+        {
+          CLog::LogF(LOGINFO, "t+{} ms after video layer on: GUI frames last second: drawn {}, skipped {}",
+                     std::chrono::duration_cast<std::chrono::milliseconds>(nowDiag - s_layerStart)
+                         .count(),
+                     s_drawn, s_skipped);
+          s_lastReport = nowDiag;
+          s_drawn = s_skipped = 0;
+          ++s_reports;
+        }
       }
       else
       {

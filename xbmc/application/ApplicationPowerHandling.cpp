@@ -67,6 +67,8 @@ void CApplicationPowerHandling::ResetNavigationTimer()
 
 void CApplicationPowerHandling::SetRenderGUI(bool renderGUI)
 {
+  if (m_renderGUI != renderGUI)
+    CLog::LogF(LOGINFO, "render GUI set to {}", renderGUI);
   m_renderGUI = renderGUI;
 }
 

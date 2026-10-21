@@ -28,6 +28,7 @@
 #include "settings/Settings.h"
 #include "settings/SettingsComponent.h"
 #include "utils/StringUtils.h"
+#include "utils/log.h"
 #include "video/ViewModeSettings.h"
 #include "video/dialogs/GUIDialogFullScreenInfo.h"
 #include "video/dialogs/GUIDialogSubtitleSettings.h"
@@ -182,6 +183,20 @@ void CGUIWindowFullScreen::ClearBackground()
 {
   const auto& components = CServiceBroker::GetAppComponents();
   const auto appPlayer = components.GetComponent<CApplicationPlayer>();
+  {
+    // diagnostic: log (bounded) when the clear mode of the fullscreen video window changes
+    static int s_lastMode = -1;
+    static int s_logged = 0;
+    const int mode = appPlayer->IsRenderingVideoLayer() ? 0 : (appPlayer->IsRenderingVideo() ? 1 : 2);
+    if (mode != s_lastMode && s_logged < 40)
+    {
+      CLog::LogF(LOGINFO, "fullscreen video clear mode: {}",
+                 mode == 0 ? "transparent (video layer)"
+                           : (mode == 1 ? "geometry/default" : "opaque black"));
+      ++s_logged;
+    }
+    s_lastMode = mode;
+  }
   if (appPlayer->IsRenderingVideoLayer())
     CServiceBroker::GetWinSystem()->GetGfxContext().Clear(0);
   else if (!CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->m_guiGeometryClear ||

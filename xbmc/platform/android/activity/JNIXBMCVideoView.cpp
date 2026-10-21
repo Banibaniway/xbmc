@@ -148,6 +148,15 @@ const CRect& CJNIXBMCVideoView::getSurfaceRect()
 
 void CJNIXBMCVideoView::setSurfaceRect(const CRect& rect)
 {
+  {
+    static int s_logged = 0;
+    if (rect != m_surfaceRect && s_logged < 40)
+    {
+      CLog::Log(LOGINFO, "Video view surface rect: {:.0f},{:.0f} - {:.0f},{:.0f}", rect.x1, rect.y1,
+                rect.x2, rect.y2);
+      ++s_logged;
+    }
+  }
   call_method<void>(m_object,
                     "setSurfaceRect", "(IIII)V", int(rect.x1), int(rect.y1), int(rect.x2), int(rect.y2));
   m_surfaceRect = rect;

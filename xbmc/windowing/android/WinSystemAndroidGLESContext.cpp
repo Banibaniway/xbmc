@@ -205,6 +205,16 @@ bool CWinSystemAndroidGLESContext::CreateSurface()
 
   // new surface => undefined buffers (swapchain depth is up to 3-4 on Android)
   m_framesToFullRedraw = 6;
+  {
+    EGLint w = 0, h = 0, swap = 0;
+    eglQuerySurface(m_pGLContext.GetEGLDisplay(), m_pGLContext.GetEGLSurface(), EGL_WIDTH, &w);
+    eglQuerySurface(m_pGLContext.GetEGLDisplay(), m_pGLContext.GetEGLSurface(), EGL_HEIGHT, &h);
+    eglQuerySurface(m_pGLContext.GetEGLDisplay(), m_pGLContext.GetEGLSurface(),
+                    EGL_SWAP_BEHAVIOR, &swap);
+    CLog::LogF(LOGINFO, "EGL surface {}x{}, swap behavior {:#x}, config alpha bits {}, HDR {:#x}", w,
+               h, swap, m_pGLContext.GetConfigAttrib(EGL_ALPHA_SIZE),
+               static_cast<int>(m_HDRColorSpace));
+  }
   CLog::LogF(LOGINFO, "new EGL surface created: forcing full GUI redraw for {} presented frames",
              m_framesToFullRedraw);
 
