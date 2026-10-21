@@ -186,7 +186,7 @@ void CApplicationMessageHandling::OnApplicationMessage(MESSAGING::ThreadMessage*
       *static_cast<bool*>(pMsg->lpVoid) =
           m_app.InitWindow(CServiceBroker::GetWinSystem()->GetGfxContext().GetVideoResolution());
       m_app.GetComponent<CApplicationPowerHandling>()->SetRenderGUI(true);
-      CLog::LogF(LOGDEBUG, "display setup done, marking GUI dirty");
+      CLog::LogF(LOGINFO, "display setup done, marking GUI dirty");
       if (CGUIComponent* gui = CServiceBroker::GetGUI())
         gui->GetWindowManager().MarkDirty();
       break;

@@ -96,12 +96,14 @@ void CJNIXBMCVideoView::_surfaceDestroyed(JNIEnv* env, jobject thiz, jobject hol
 
 void CJNIXBMCVideoView::surfaceChanged(CJNISurfaceHolder holder, int format, int width, int height)
 {
+  CLog::Log(LOGINFO, "Video view surface changed: format {} {}x{}", format, width, height);
   if (m_callback)
     m_callback->surfaceChanged(holder, format, width, height);
 }
 
 void CJNIXBMCVideoView::surfaceCreated(CJNISurfaceHolder holder)
 {
+  CLog::Log(LOGINFO, "Video view surface created");
   if (m_callback)
     m_callback->surfaceCreated(holder);
   m_surfaceCreated.Set();
@@ -109,6 +111,7 @@ void CJNIXBMCVideoView::surfaceCreated(CJNISurfaceHolder holder)
 
 void CJNIXBMCVideoView::surfaceDestroyed(CJNISurfaceHolder holder)
 {
+  CLog::Log(LOGINFO, "Video view surface destroyed");
   m_surfaceCreated.Reset();
   if (m_callback)
     m_callback->surfaceDestroyed(holder);

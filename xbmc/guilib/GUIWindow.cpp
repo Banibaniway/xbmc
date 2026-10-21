@@ -613,7 +613,7 @@ bool CGUIWindow::OnMessage(CGUIMessage& message)
 
   case GUI_MSG_WINDOW_INIT:
     {
-      CLog::Log(LOGDEBUG, "------ Window Init ({}) ------", GetProperty("xmlfile").asString());
+      CLog::Log(LOGINFO, "------ Window Init ({}) ------", GetProperty("xmlfile").asString());
       if (m_dynamicResourceAlloc || !m_bAllocated) AllocResources(false);
       OnInitWindow();
       return true;
@@ -622,7 +622,7 @@ bool CGUIWindow::OnMessage(CGUIMessage& message)
 
   case GUI_MSG_WINDOW_DEINIT:
     {
-      CLog::Log(LOGDEBUG, "------ Window Deinit ({}) ------", GetProperty("xmlfile").asString());
+      CLog::Log(LOGINFO, "------ Window Deinit ({}) ------", GetProperty("xmlfile").asString());
       OnDeinitWindow(message.GetParam1());
       // now free the window
       if (m_dynamicResourceAlloc) FreeResources();

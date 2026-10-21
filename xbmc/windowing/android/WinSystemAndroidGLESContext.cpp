@@ -143,7 +143,7 @@ void CWinSystemAndroidGLESContext::PresentRenderImpl(bool rendered)
   else if (rendered && m_framesToFullRedraw > 0)
   {
     --m_framesToFullRedraw;
-    CLog::LogF(LOGDEBUG, "full GUI redraw frame presented, {} remaining", m_framesToFullRedraw);
+    CLog::LogF(LOGINFO, "full GUI redraw frame presented, {} remaining", m_framesToFullRedraw);
   }
 
   CXBMCApp::Get().WaitVSync(1000);
@@ -205,7 +205,7 @@ bool CWinSystemAndroidGLESContext::CreateSurface()
 
   // new surface => undefined buffers (swapchain depth is up to 3-4 on Android)
   m_framesToFullRedraw = 6;
-  CLog::LogF(LOGDEBUG, "new EGL surface created: forcing full GUI redraw for {} presented frames",
+  CLog::LogF(LOGINFO, "new EGL surface created: forcing full GUI redraw for {} presented frames",
              m_framesToFullRedraw);
 
 #if EGL_EXT_surface_SMPTE2086_metadata

@@ -1633,7 +1633,7 @@ void CApplication::FrameMove(bool processEvents, bool processGUI)
       const bool videoLayer = appPlayer->IsRenderingVideoLayer();
       if (videoLayer != s_lastVideoLayer)
       {
-        CLog::LogF(LOGDEBUG, "video layer state changed to {}, marking GUI dirty", videoLayer);
+        CLog::LogF(LOGINFO, "video layer state changed to {}, marking GUI dirty", videoLayer);
         CServiceBroker::GetGUI()->GetWindowManager().MarkDirty();
         s_lastVideoLayer = videoLayer;
       }
@@ -1648,7 +1648,27 @@ void CApplication::FrameMove(bool processEvents, bool processGUI)
       if (CServiceBroker::GetWinSystem()->GetBufferAge() != 0)
         m_skipGuiRender = true;
       else
-        CLog::LogF(LOGDEBUG, "GUI render not skipped: buffer age is 0 (fresh surface)");
+        CLog::LogF(LOGINFO, "GUI render not skipped: buffer age is 0 (fresh surface)");
+    }
+    {
+      // diagnostic: log (bounded) when the GUI draw/skip decision changes while the video layer is on
+      static int s_skipState = -1;
+      static int s_transitions = 0;
+      if (appPlayer->IsRenderingVideoLayer())
+      {
+        const int state = m_skipGuiRender ? 1 : 0;
+        if (state != s_skipState && s_transitions < 60)
+        {
+          CLog::LogF(LOGINFO, "GUI render {} while video layer is on (#{})",
+                     m_skipGuiRender ? "skipped" : "drawn", ++s_transitions);
+        }
+        s_skipState = state;
+      }
+      else
+      {
+        s_skipState = -1;
+        s_transitions = 0;
+      }
     }
     CServiceBroker::GetGUI()->GetWindowManager().FrameMove();
   }
