@@ -9724,14 +9724,16 @@ void CVideoDatabase::GetMoviesByName(const std::string& strSearch, CFileItemList
     if (m_profileManager.GetMasterProfile().getLockMode() != LockMode::EVERYONE &&
         !g_passwordManager.bMasterUser)
       strSQL = PrepareSQL("SELECT movie.idMovie, movie.c%02d, movie.premiered, path.strPath, "
-                          "movie.idSet FROM movie "
+                          "movie.idSet, files.playCount FROM movie "
                           "INNER JOIN files ON files.idFile=movie.idFile INNER JOIN path ON "
                           "path.idPath=files.idPath "
                           "WHERE movie.c%02d LIKE '%%%s%%'",
                           VIDEODB_ID_TITLE, VIDEODB_ID_TITLE, strSearch.c_str());
     else
-      strSQL = PrepareSQL("SELECT movie.idMovie, movie.c%02d, movie.premiered, movie.idSet "
-                          "FROM movie WHERE movie.c%02d LIKE '%%%s%%'",
+      strSQL = PrepareSQL("SELECT movie.idMovie, movie.c%02d, movie.premiered, movie.idSet, "
+                          "files.playCount FROM movie "
+                          "INNER JOIN files ON files.idFile=movie.idFile "
+                          "WHERE movie.c%02d LIKE '%%%s%%'",
                           VIDEODB_ID_TITLE, VIDEODB_ID_TITLE, strSearch.c_str());
     m_pDS->query( strSQL );
 
@@ -9765,6 +9767,7 @@ void CVideoDatabase::GetMoviesByName(const std::string& strSearch, CFileItemList
       tag->m_type = MediaTypeMovie;
       tag->SetTitle(title);
       tag->SetYear(std::atoi(premiered.substr(0, 4).c_str()));
+      tag->SetPlayCount(m_pDS->fv("files.playCount").get_asInt());
 
       KODI::ART::Artwork art;
       if (GetArtForItem(movieId, MediaTypeMovie, art))
