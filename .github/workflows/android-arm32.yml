@@ -1,13 +1,13 @@
 name: Android ARM32 APK
 
-# Build Kodi 22.0rc1 + GUI fix for 32-bit ARM (Fire TV 4K Max gen 1),
+# Build Kodi 22.0rc1 + GUI fix + movie-only search for 32-bit ARM (Fire TV 4K Max gen 1),
 # using Kodi's own CI build steps (tools/buildsteps/android/*), as the Jenkins CI does.
 # Runs on every push to this branch. The APK is uploaded as an artifact.
 
 on:
   workflow_dispatch:
   push:
-    branches: [fix-black-gui-surface]
+    branches: [fix-black-gui-and-search]
 
 env:
   # variables read by tools/buildsteps/defaultenv and the android build steps
@@ -22,7 +22,7 @@ env:
   # file name of the APK (getBuildRevDateStr)
   BUILD_TIMESTAMP: ${{ github.run_number }}
   GIT_COMMIT: ${{ github.sha }}
-  Revision: fix-black-gui
+  Revision: gui-fix-search
   BUILD_ID: ${{ github.run_id }}
 
 jobs:
@@ -90,7 +90,7 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: kodi-22.0rc1-arm32-fix-black-gui
+          name: kodi-22.0rc1-arm32-gui-fix-search
           path: ${{ github.workspace }}/kodi-*.apk
           if-no-files-found: error
 
