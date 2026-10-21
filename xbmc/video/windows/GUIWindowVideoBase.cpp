@@ -1338,7 +1338,7 @@ void CGUIWindowVideoBase::OnSearch()
     for (int i = 0; i < items.Size(); i++)
     {
       CFileItemPtr pItem = items[i];
-      pDlgSelect->Add(pItem->GetLabel());
+      pDlgSelect->Add(*pItem);
     }
 
     pDlgSelect->Open();
