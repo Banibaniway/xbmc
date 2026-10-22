@@ -38,4 +38,19 @@ inline bool HdmiFixEnabled()
                                 XFILE::CFile::Exists("special://profile/hdmi_fix_off.txt"));
   return enabled;
 }
+
+/*!
+ * \brief Runtime switch for the order of the display mode change (diagnostic builds).
+ *
+ * On by default: the display mode is changed first, then (once the display has confirmed and
+ * a video is playing) the display is declared lost, as in Kodi 20. An empty file
+ * "modeorder_off" (or "modeorder_off.txt") in the userdata folder restores the Kodi 21/22
+ * order (display declared lost before the mode change) at the next start.
+ */
+inline bool ModeOrderNexusEnabled()
+{
+  static const bool enabled = !(XFILE::CFile::Exists("special://profile/modeorder_off") ||
+                                XFILE::CFile::Exists("special://profile/modeorder_off.txt"));
+  return enabled;
+}
 } // namespace KODI::GUIFIX

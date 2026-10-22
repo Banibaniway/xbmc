@@ -25,6 +25,7 @@
 #include "application/ApplicationComponents.h"
 #include "application/ApplicationPlayer.h"
 #include "application/ApplicationPowerHandling.h"
+#include "application/GuiFixSwitch.h"
 #include "cores/AudioEngine/AESinkFactory.h"
 #include "cores/AudioEngine/Interfaces/AE.h"
 #include "cores/AudioEngine/Sinks/AESinkAUDIOTRACK.h"
@@ -739,7 +740,11 @@ void CXBMCApp::SetDisplayMode(int mode, float rate)
   }
   m_displayChangeEvent.Reset();
 
-  if (m_hdmiSource)
+  const bool nexusOrder = KODI::GUIFIX::ModeOrderNexusEnabled();
+  CLog::LogF(LOGINFO, "mode {} rate {}: display declared lost {} the mode change (hdmiSource: {})",
+             mode, rate, nexusOrder ? "after" : "before", m_hdmiSource);
+
+  if (m_hdmiSource && !nexusOrder)
     dynamic_cast<CWinSystemAndroid*>(CServiceBroker::GetWinSystem())->InitiateModeChange();
 
   std::map<std::string, CVariant> vmap;
@@ -748,7 +753,18 @@ void CXBMCApp::SetDisplayMode(int mode, float rate)
   CVariant *variant = new CVariant(vmap);
   runNativeOnUiThread(SetDisplayModeCallback, variant);
   if (g_application.IsInitialized())
+  {
     m_displayChangeEvent.Wait(5000ms);
+
+    // Kodi 20 order: only once the display has confirmed the new mode, and only while playing
+    if (m_hdmiSource && nexusOrder)
+    {
+      const auto& components = CServiceBroker::GetAppComponents();
+      const auto appPlayer = components.GetComponent<CApplicationPlayer>();
+      if (appPlayer->IsPlaying())
+        dynamic_cast<CWinSystemAndroid*>(CServiceBroker::GetWinSystem())->InitiateModeChange();
+    }
+  }
 }
 
 int CXBMCApp::android_printf(const char* format, ...)
