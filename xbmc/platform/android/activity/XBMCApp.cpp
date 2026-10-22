@@ -1257,7 +1257,8 @@ void CXBMCApp::onReceive(CJNIIntent intent)
   {
     m_hdmiPlugged = (intent.getIntExtra(CJNIAudioManager::EXTRA_AUDIO_PLUG_STATE, 0) != 0);
     android_printf("-- HDMI is plugged in: %s", m_hdmiPlugged ? "yes" : "no");
-    CLog::Log(LOGINFO, "HDMI plugged in: {}", m_hdmiPlugged ? "yes" : "no");
+    if (CServiceBroker::IsLoggingUp())
+      CLog::Log(LOGINFO, "HDMI plugged in: {}", m_hdmiPlugged ? "yes" : "no");
     if (g_application.IsInitialized())
     {
       CWinSystemBase* winSystem = CServiceBroker::GetWinSystem();
@@ -1759,13 +1760,15 @@ void CXBMCApp::onDisplayRemoved(int displayId)
 void CXBMCApp::surfaceChanged(CJNISurfaceHolder holder, int format, int width, int height)
 {
   android_printf("CXBMCApp::%s", __FUNCTION__);
-  CLog::Log(LOGINFO, "GUI surface changed: format {} {}x{}", format, width, height);
+  if (CServiceBroker::IsLoggingUp())
+    CLog::Log(LOGINFO, "GUI surface changed: format {} {}x{}", format, width, height);
 }
 
 void CXBMCApp::surfaceCreated(CJNISurfaceHolder holder)
 {
   android_printf("CXBMCApp::%s", __FUNCTION__);
-  CLog::Log(LOGINFO, "GUI surface created");
+  if (CServiceBroker::IsLoggingUp())
+    CLog::Log(LOGINFO, "GUI surface created");
 
   m_window = CNativeWindow::CreateFromSurface(holder);
   if (m_window == nullptr)
@@ -1785,7 +1788,8 @@ void CXBMCApp::surfaceCreated(CJNISurfaceHolder holder)
 void CXBMCApp::surfaceDestroyed(CJNISurfaceHolder holder)
 {
   android_printf("CXBMCApp::%s", __FUNCTION__);
-  CLog::Log(LOGINFO, "GUI surface destroyed");
+  if (CServiceBroker::IsLoggingUp())
+    CLog::Log(LOGINFO, "GUI surface destroyed");
   // If we have exited XBMC, it no longer exists.
   auto& components = CServiceBroker::GetAppComponents();
   const auto appPower = components.GetComponent<CApplicationPowerHandling>();

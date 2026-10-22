@@ -67,7 +67,8 @@ void CApplicationPowerHandling::ResetNavigationTimer()
 
 void CApplicationPowerHandling::SetRenderGUI(bool renderGUI)
 {
-  if (m_renderGUI != renderGUI)
+  // may be called from the Android UI thread before (or after) the logging exists
+  if (m_renderGUI != renderGUI && CServiceBroker::IsLoggingUp())
     CLog::LogF(LOGINFO, "render GUI set to {}", renderGUI);
   m_renderGUI = renderGUI;
 }
