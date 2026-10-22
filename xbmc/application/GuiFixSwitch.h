@@ -10,6 +10,9 @@
 
 #include "filesystem/File.h"
 
+#include <atomic>
+#include <string>
+
 namespace KODI::GUIFIX
 {
 /*!
@@ -55,16 +58,34 @@ inline bool ModeOrderNexusEnabled()
 }
 
 /*!
- * \brief Runtime switch for the one-time GUI surface refresh during video start (diagnostic).
+ * \brief Automatic GUI surface refresh during video start (diagnostic builds).
  *
- * On by default: about 3 s after the video layer has been switched on, the GUI EGL surface is
- * recreated once and the whole GUI redrawn. An empty file "surface_refresh_off" (or
- * "surface_refresh_off.txt") in the userdata folder disables it at the next start.
+ * Off by default. An empty file "auto_refresh_1", "auto_refresh_2" or "auto_refresh_3" (with or
+ * without .txt) in the userdata folder selects the refresh method that is run once, 3 s after
+ * the video layer has been switched on. Returns 0 when disabled.
+ *   1 = recreate the EGL surface, 2 = hide/show the Java GUI view, 3 = nudge the layer alpha.
  */
-inline bool SurfaceRefreshEnabled()
+inline int AutoRefreshMethod()
 {
-  static const bool enabled = !(XFILE::CFile::Exists("special://profile/surface_refresh_off") ||
-                                XFILE::CFile::Exists("special://profile/surface_refresh_off.txt"));
-  return enabled;
+  static const int method = []()
+  {
+    for (int m = 1; m <= 3; ++m)
+    {
+      const std::string base = "special://profile/auto_refresh_" + std::to_string(m);
+      if (XFILE::CFile::Exists(base) || XFILE::CFile::Exists(base + ".txt"))
+        return m;
+    }
+    return 0;
+  }();
+  return method;
+}
+
+/*!
+ * \brief Number of upcoming frames for which the whole GUI must be redrawn (diagnostic).
+ */
+inline std::atomic<int>& ForcedRedrawFrames()
+{
+  static std::atomic<int> frames{0};
+  return frames;
 }
 } // namespace KODI::GUIFIX

@@ -122,3 +122,10 @@ bool CJNIXBMCMainView::isCreated() const
 
 }
 
+
+void CJNIXBMCMainView::refreshSurface(int method)
+{
+  if (!m_object)
+    return;
+  call_method<void>(m_object, "refreshSurface", "(I)V", method);
+}

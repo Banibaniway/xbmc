@@ -49,7 +49,7 @@ public:
   // A freshly created EGL surface has undefined buffer content: report age 0 until
   // every buffer of the swapchain has been fully redrawn once.
   int GetBufferAge() override;
-  bool RefreshGuiSurface() override;
+  bool RefreshGuiSurface(int method) override;
 protected:
   void SetVSyncImpl(bool enable) override;
   void PresentRenderImpl(bool rendered) override;

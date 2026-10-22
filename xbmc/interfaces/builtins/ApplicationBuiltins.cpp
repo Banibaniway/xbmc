@@ -9,6 +9,7 @@
 #include "ApplicationBuiltins.h"
 
 #include "ServiceBroker.h"
+#include "application/GuiFixSwitch.h"
 #include "application/ApplicationComponents.h"
 #include "application/ApplicationPowerHandling.h"
 #include "application/ApplicationVolumeHandling.h"
@@ -25,6 +26,7 @@
 #include "utils/URIUtils.h"
 #include "utils/Variant.h"
 #include "utils/log.h"
+#include "windowing/WinSystem.h"
 
 #include <stdlib.h>
 
@@ -137,6 +139,18 @@ static int ToggleDPMS(const std::vector<std::string>& params)
   return 0;
 }
 
+/*! \brief Diagnostic: rebuild the GUI surface (Android).
+ *  \param params params[0] = method (1 = EGL surface, 2 = Java view hide/show, 3 = alpha nudge).
+ */
+static int RefreshGuiSurface(const std::vector<std::string>& params)
+{
+  const int method = params.empty() ? 1 : std::atoi(params[0].c_str());
+  CLog::Log(LOGINFO, "RefreshGuiSurface: manual request, method {}", method);
+  if (CServiceBroker::GetWinSystem()->RefreshGuiSurface(method))
+    KODI::GUIFIX::ForcedRedrawFrames() = 8;
+  return 0;
+}
+
 /*! \brief Send a WOL packet to a given host.
  *  \param params The parameters.
  *  \details params[0] = The MAC of the host to wake.
@@ -214,6 +228,7 @@ CBuiltins::CommandMap CApplicationBuiltins::GetOperations() const
            {"extract", {"Extracts the specified archive", 1, Extract}},
            {"mute", {"Mute the player", 0, Mute}},
            {"notifyall", {"Notify all connected clients", 2, NotifyAll}},
+           {"refreshguisurface", {"Diagnostic: rebuild the GUI surface", 0, RefreshGuiSurface}},
            {"setvolume", {"Set the current volume", 1, SetVolume}},
            {"toggledebug", {"Enables/disables debug mode", 0, ToggleDebug}},
            {"toggledpms", {"Toggle DPMS mode manually", 0, ToggleDPMS}},

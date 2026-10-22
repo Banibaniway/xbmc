@@ -37,6 +37,7 @@ public:
   bool isActive() { return m_surfaceCreated.Signaled(); }
   CJNISurface getSurface();
   bool isCreated() const;
+  void refreshSurface(int method);
 
 protected:
   static CJNIXBMCMainView* m_instance;

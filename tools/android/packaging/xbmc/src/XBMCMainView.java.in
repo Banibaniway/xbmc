@@ -4,6 +4,7 @@ import android.content.Context;
 import android.graphics.PixelFormat;
 import android.util.Log;
 import android.view.SurfaceView;
+import android.view.View;
 import android.view.SurfaceHolder;
 
 /**
@@ -30,6 +31,47 @@ public class XBMCMainView extends SurfaceView implements SurfaceHolder.Callback
 
     Log.d(TAG, "XBMCMainView: Created");
 }
+
+  /**
+   * Diagnostic: force Android to rebuild the layer of the GUI surface.
+   * method 2: hide then show the view (the surface is destroyed and created again)
+   * method 3: nudge the layer alpha (0.99 then 1.0) so that the compositor revalidates it
+   */
+  public void refreshSurface(final int method)
+  {
+    post(new Runnable()
+    {
+      @Override
+      public void run()
+      {
+        Log.d(TAG, "XBMCMainView: refreshSurface method " + method);
+        if (method == 2)
+        {
+          setVisibility(View.INVISIBLE);
+          postDelayed(new Runnable()
+          {
+            @Override
+            public void run()
+            {
+              setVisibility(View.VISIBLE);
+            }
+          }, 150);
+        }
+        else if (method == 3)
+        {
+          setAlpha(0.99f);
+          postDelayed(new Runnable()
+          {
+            @Override
+            public void run()
+            {
+              setAlpha(1.0f);
+            }
+          }, 150);
+        }
+      }
+    });
+  }
 
   @Override
   public void surfaceCreated(SurfaceHolder holder)

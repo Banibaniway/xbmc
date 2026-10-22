@@ -1773,6 +1773,12 @@ void CXBMCApp::onDisplayRemoved(int displayId)
   android_printf("CXBMCApp::%s", __FUNCTION__);
 }
 
+void CXBMCApp::RefreshGuiView(int method)
+{
+  if (m_mainView)
+    m_mainView->refreshSurface(method);
+}
+
 void CXBMCApp::surfaceChanged(CJNISurfaceHolder holder, int format, int width, int height)
 {
   android_printf("CXBMCApp::%s", __FUNCTION__);

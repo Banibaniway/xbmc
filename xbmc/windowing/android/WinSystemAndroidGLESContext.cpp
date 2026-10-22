@@ -187,8 +187,16 @@ int CWinSystemAndroidGLESContext::GetBufferAge()
                                                                 : CWinSystemBase::GetBufferAge();
 }
 
-bool CWinSystemAndroidGLESContext::RefreshGuiSurface()
+bool CWinSystemAndroidGLESContext::RefreshGuiSurface(int method)
 {
+  if (method == 2 || method == 3)
+  {
+    CLog::LogF(LOGINFO, "GUI surface refresh: Java view method {}", method);
+    CXBMCApp::Get().RefreshGuiView(method);
+    return true;
+  }
+
+  CLog::LogF(LOGINFO, "GUI surface refresh: EGL surface method 1");
   m_pGLContext.DestroySurface();
   const bool ok = CreateSurface() && m_pGLContext.BindContext();
   CLog::LogF(LOGINFO, "GUI surface refreshed: {}", ok ? "ok" : "FAILED");

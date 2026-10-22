@@ -220,6 +220,9 @@
       <d mod="ctrl,shift">ToggleDebug</d>
       <r mod="ctrl,shift">ToggleDirtyRegionVisualization</r>
       <f11>HDRToggle</f11>
+      <f5>RefreshGuiSurface(1)</f5>
+      <f6>RefreshGuiSurface(2)</f6>
+      <f7>RefreshGuiSurface(3)</f7>
     </keyboard>
   </global>
   <LoginScreen>

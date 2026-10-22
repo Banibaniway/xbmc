@@ -1650,7 +1650,6 @@ void CApplication::FrameMove(bool processEvents, bool processGUI)
       static bool s_lastVideoLayer = false;
       static std::chrono::steady_clock::time_point s_layerOnSince;
       static bool s_refreshDone = false;
-      static int s_refreshRedraw = 0;
       const bool videoLayer = appPlayer->IsRenderingVideoLayer();
       if (videoLayer != s_lastVideoLayer)
       {
@@ -1664,18 +1663,20 @@ void CApplication::FrameMove(bool processEvents, bool processGUI)
         s_refreshDone = false;
       }
 
-      // diagnostic: one-time recreation of the GUI surface 3 s after the video layer is on
-      if (videoLayer && !s_refreshDone && KODI::GUIFIX::SurfaceRefreshEnabled() &&
+      // diagnostic: optional one-time refresh of the GUI surface 3 s after the video layer is on
+      const int autoMethod = KODI::GUIFIX::AutoRefreshMethod();
+      if (videoLayer && !s_refreshDone && autoMethod > 0 &&
           std::chrono::steady_clock::now() - s_layerOnSince >= std::chrono::milliseconds(3000))
       {
         s_refreshDone = true;
-        CLog::LogF(LOGINFO, "REFRESH: recreating the GUI surface now (3 s after video layer on)");
-        if (CServiceBroker::GetWinSystem()->RefreshGuiSurface())
-          s_refreshRedraw = 8;
+        CLog::LogF(LOGINFO, "REFRESH: automatic GUI surface refresh, method {} (3 s after video layer on)",
+                   autoMethod);
+        if (CServiceBroker::GetWinSystem()->RefreshGuiSurface(autoMethod))
+          KODI::GUIFIX::ForcedRedrawFrames() = 8;
       }
-      if (s_refreshRedraw > 0)
+      if (KODI::GUIFIX::ForcedRedrawFrames() > 0)
       {
-        --s_refreshRedraw;
+        --KODI::GUIFIX::ForcedRedrawFrames();
         CServiceBroker::GetGUI()->GetWindowManager().MarkDirty();
         m_skipGuiRender = false;
       }

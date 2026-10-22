@@ -171,6 +171,8 @@ public:
   static void SetSystemVolume(float percent);
 
   void SetDisplayMode(int mode, float rate);
+  //! \brief Diagnostic: ask the Java GUI view to rebuild its layer (method 2 or 3)
+  void RefreshGuiView(int method);
   int GetDPI() const;
   void SetVideoLayoutBackgroundColor(const int color);
 
