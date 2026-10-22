@@ -33,6 +33,7 @@
 #include "VideoPlayerRadioRDS.h"
 #include "VideoPlayerVideo.h"
 #include "application/Application.h"
+#include "application/GuiFixSwitch.h"
 #include "cores/DataCacheCore.h"
 #include "cores/EdlEdit.h"
 #include "cores/FFmpeg.h"
@@ -6110,14 +6111,26 @@ void CVideoPlayer::UpdateVideoRender(bool video)
 // IDispResource interface
 void CVideoPlayer::OnLostDisplay()
 {
-  CLog::Log(LOGINFO, "VideoPlayer: OnLostDisplay received");
+  CLog::Log(LOGINFO, "VideoPlayer: OnLostDisplay received (HDMI fix {})",
+            KODI::GUIFIX::HdmiFixEnabled() ? "ON" : "OFF");
   if (m_VideoPlayerAudio->IsInited())
     m_VideoPlayerAudio->SendMessage(std::make_shared<CDVDMsgBool>(CDVDMsg::GENERAL_PAUSE, true), 1);
   if (m_VideoPlayerVideo->IsInited())
     m_VideoPlayerVideo->SendMessage(std::make_shared<CDVDMsgBool>(CDVDMsg::GENERAL_PAUSE, true), 1);
   m_clock.Pause(true);
   m_displayLost = true;
-  FlushRenderer();
+  if (KODI::GUIFIX::HdmiFixEnabled())
+  {
+    // Do not wait for the main thread: this is called from the Android UI thread, which the
+    // main thread needs (vsync callback) while it is busy presenting. Waiting here made both
+    // threads block each other for the full 1 s timeout. The flush is still done, just
+    // asynchronously by the main thread.
+    m_renderManager.Flush(false, true);
+  }
+  else
+  {
+    FlushRenderer();
+  }
 }
 
 void CVideoPlayer::OnResetDisplay()

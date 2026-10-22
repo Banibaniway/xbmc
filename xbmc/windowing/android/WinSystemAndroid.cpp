@@ -10,6 +10,7 @@
 
 #include "OSScreenSaverAndroid.h"
 #include "ServiceBroker.h"
+#include "application/GuiFixSwitch.h"
 #include "WinEventsAndroid.h"
 #include "addons/interfaces/platform/android/System.h"
 #include "cores/RetroPlayer/process/android/RPProcessInfoAndroid.h"
@@ -256,9 +257,18 @@ void CWinSystemAndroid::SetHdmiState(bool connected)
       resource->OnResetDisplay();
     m_dispResetTimer->Stop();
     m_HdmiModeTriggered = false;
+    m_displayLostSignaled = false;
   }
   else
   {
+    // The mode change already told the resources the display is lost; the HDMI_AUDIO_PLUG
+    // intent that follows must not do it a second time (it blocked the Android UI thread).
+    if (m_displayLostSignaled && KODI::GUIFIX::HdmiFixEnabled())
+    {
+      CLog::Log(LOGINFO, "CWinSystemAndroid::SetHdmiState: display already lost, ignoring");
+      return;
+    }
+    m_displayLostSignaled = true;
     for (auto resource : m_resources)
       resource->OnLostDisplay();
   }

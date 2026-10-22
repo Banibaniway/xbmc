@@ -83,6 +83,7 @@ protected:
 
 private:
   bool m_HdmiModeTriggered = false;
+  bool m_displayLostSignaled = false;
   bool m_dispModesUpdatePending = false;
   void UpdateResolutions(bool bUpdateDesktopRes);
 };

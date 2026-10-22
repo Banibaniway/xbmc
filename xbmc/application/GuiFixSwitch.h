@@ -25,4 +25,17 @@ inline bool Enabled()
                                 XFILE::CFile::Exists("special://profile/gui_fix_off.txt"));
   return enabled;
 }
+
+/*!
+ * \brief Runtime switch for the Android HDMI-loss deadlock fix (diagnostic builds).
+ *
+ * On by default. An empty file "hdmi_fix_off" (or "hdmi_fix_off.txt") in the userdata
+ * folder restores the original behaviour at the next start.
+ */
+inline bool HdmiFixEnabled()
+{
+  static const bool enabled = !(XFILE::CFile::Exists("special://profile/hdmi_fix_off") ||
+                                XFILE::CFile::Exists("special://profile/hdmi_fix_off.txt"));
+  return enabled;
+}
 } // namespace KODI::GUIFIX
