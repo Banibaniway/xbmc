@@ -5,6 +5,11 @@ import android.graphics.PixelFormat;
 import android.util.Log;
 import android.view.SurfaceView;
 import android.view.View;
+import android.view.ViewGroup;
+import android.view.Display;
+import android.view.Window;
+import android.view.WindowManager;
+import android.os.Build;
 import android.view.SurfaceHolder;
 
 /**
@@ -32,10 +37,31 @@ public class XBMCMainView extends SurfaceView implements SurfaceHolder.Callback
     Log.d(TAG, "XBMCMainView: Created");
 }
 
+  private XBMCVideoView findVideoView()
+  {
+    try
+    {
+      ViewGroup vl = (ViewGroup) Main.MainActivity.findViewById(R.id.VideoLayout);
+      if (vl == null)
+        return null;
+      for (int i = 0; i < vl.getChildCount(); i++)
+      {
+        View c = vl.getChildAt(i);
+        if (c instanceof XBMCVideoView)
+          return (XBMCVideoView) c;
+      }
+    }
+    catch (Exception e)
+    {
+      Log.d(TAG, "XBMCMainView: findVideoView failed " + e);
+    }
+    return null;
+  }
+
   /**
-   * Diagnostic: force Android to rebuild the layer of the GUI surface.
-   * method 2: hide then show the view (the surface is destroyed and created again)
-   * method 3: nudge the layer alpha (0.99 then 1.0) so that the compositor revalidates it
+   * Diagnostic: force Android to rebuild layers.
+   * 2: hide/show GUI view; 3: GUI alpha nudge; 4: hide/show video view;
+   * 5: hide/show video and GUI views; 6: flip GUI z-order; 7: switch display mode away and back
    */
   public void refreshSurface(final int method)
   {
@@ -45,30 +71,75 @@ public class XBMCMainView extends SurfaceView implements SurfaceHolder.Callback
       public void run()
       {
         Log.d(TAG, "XBMCMainView: refreshSurface method " + method);
-        if (method == 2)
-        {
+        final XBMCVideoView vv = (method == 4 || method == 5) ? findVideoView() : null;
+        if (method == 2 || method == 5)
           setVisibility(View.INVISIBLE);
-          postDelayed(new Runnable()
-          {
-            @Override
-            public void run()
-            {
-              setVisibility(View.VISIBLE);
-            }
-          }, 150);
-        }
-        else if (method == 3)
-        {
+        if (vv != null)
+          vv.setVisibility(View.INVISIBLE);
+        if (method == 3)
           setAlpha(0.99f);
-          postDelayed(new Runnable()
-          {
-            @Override
-            public void run()
-            {
-              setAlpha(1.0f);
-            }
-          }, 150);
+        if (method == 6)
+        {
+          setZOrderOnTop(false);
+          requestLayout();
         }
+        if (method == 7 && Build.VERSION.SDK_INT >= 23)
+        {
+          try
+          {
+            Window w = Main.MainActivity.getWindow();
+            Display d = Main.MainActivity.getWindowManager().getDefaultDisplay();
+            final int cur = d.getMode().getModeId();
+            int other = -1;
+            for (Display.Mode m : d.getSupportedModes())
+              if (m.getModeId() != cur)
+              {
+                other = m.getModeId();
+                break;
+              }
+            Log.d(TAG, "XBMCMainView: refreshSurface method 7: mode " + cur + " -> " + other + " -> " + cur);
+            if (other > 0)
+            {
+              WindowManager.LayoutParams lp = w.getAttributes();
+              lp.preferredDisplayModeId = other;
+              w.setAttributes(lp);
+              final Window fw = w;
+              final int back = cur;
+              postDelayed(new Runnable()
+              {
+                @Override
+                public void run()
+                {
+                  WindowManager.LayoutParams lp2 = fw.getAttributes();
+                  lp2.preferredDisplayModeId = back;
+                  fw.setAttributes(lp2);
+                }
+              }, 2500);
+            }
+          }
+          catch (Exception e)
+          {
+            Log.d(TAG, "XBMCMainView: method 7 failed " + e);
+          }
+        }
+        postDelayed(new Runnable()
+        {
+          @Override
+          public void run()
+          {
+            if (method == 2 || method == 5)
+              setVisibility(View.VISIBLE);
+            if (vv != null)
+              vv.setVisibility(View.VISIBLE);
+            if (method == 3)
+              setAlpha(1.0f);
+            if (method == 6)
+            {
+              setZOrderOnTop(true);
+              requestLayout();
+            }
+          }
+        }, 150);
       }
     });
   }

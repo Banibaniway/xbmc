@@ -189,7 +189,7 @@ int CWinSystemAndroidGLESContext::GetBufferAge()
 
 bool CWinSystemAndroidGLESContext::RefreshGuiSurface(int method)
 {
-  if (method == 2 || method == 3)
+  if (method >= 2 && method <= 7)
   {
     CLog::LogF(LOGINFO, "GUI surface refresh: Java view method {}", method);
     CXBMCApp::Get().RefreshGuiView(method);

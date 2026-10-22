@@ -223,6 +223,10 @@
       <f5>RefreshGuiSurface(1)</f5>
       <f6>RefreshGuiSurface(2)</f6>
       <f7>RefreshGuiSurface(3)</f7>
+      <f12>RefreshGuiSurface(4)</f12>
+      <insert>RefreshGuiSurface(5)</insert>
+      <scrolllock>RefreshGuiSurface(6)</scrolllock>
+      <f1>RefreshGuiSurface(7)</f1>
     </keyboard>
   </global>
   <LoginScreen>
