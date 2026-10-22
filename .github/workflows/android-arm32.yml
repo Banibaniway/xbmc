@@ -49,6 +49,8 @@ jobs:
           java-version: "17"
 
       - name: Android SDK + NDK
+        env:
+          KODI_KEYSTORE_B64: ${{ secrets.KODI_KEYSTORE_B64 }}
         run: |
           mkdir -p "$SDK_PATH" "$TARBALLS"
           curl -sSL -o /tmp/cmdtools.zip https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
@@ -58,7 +60,15 @@ jobs:
           yes | "$SDK_PATH/cmdline-tools/latest/bin/sdkmanager" --sdk_root="$SDK_PATH" --licenses >/dev/null || true
           "$SDK_PATH/cmdline-tools/latest/bin/sdkmanager" --sdk_root="$SDK_PATH" platform-tools "platforms;android-35" "build-tools;35.0.0" "ndk;$NDK_VERSION"
           mkdir -p ~/.android
-          keytool -genkey -keystore ~/.android/debug.keystore -alias androiddebugkey -dname "CN=Android Debug,O=Android,C=US" -keypass android -storepass android -keyalg RSA -keysize 2048 -validity 10000 || true
+          if [ -z "$KODI_KEYSTORE_B64" ]; then
+            echo "ERROR: repository secret KODI_KEYSTORE_B64 is missing or empty"
+            exit 1
+          fi
+          # fixed signing key (repository secret): every build can update the previous one
+          echo "$KODI_KEYSTORE_B64" | base64 -d > ~/.android/debug.keystore
+          keytool -list -keystore ~/.android/debug.keystore -storepass android | grep -q "0D:16:9C:A3:10:A8:2E:34" \
+            || { echo "ERROR: the signing key in the secret is not the expected one"; exit 1; }
+          echo "Using the fixed signing key from the KODI_KEYSTORE_B64 secret"
 
       # --- Kodi's own build steps (same order as the Jenkins job) ---
       - name: prepare-depends
