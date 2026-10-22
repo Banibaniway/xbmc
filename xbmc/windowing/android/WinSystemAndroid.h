@@ -12,10 +12,13 @@
 #include "rendering/gles/RenderSystemGLES.h"
 #include "system_egl.h"
 #include "threads/CriticalSection.h"
+#include "threads/Event.h"
 #include "threads/Timer.h"
 #include "utils/HDRCapabilities.h"
 #include "windowing/WinSystem.h"
 
+#include <atomic>
+#include <chrono>
 #include <memory>
 
 class CDecoderFilterManager;
@@ -41,6 +44,12 @@ public:
   void InitiateModeChange();
   bool IsHdmiModeTriggered() const { return m_HdmiModeTriggered; }
   void SetHdmiState(bool connected);
+  //! \brief A display mode change is about to be requested: the HDMI link will drop.
+  void BeginModeChange();
+  //! \brief Wait until the display is back after a mode change (HDMI reset), at most
+  //!        \p timeout after BeginModeChange().
+  //! \return true if the display is available, false on timeout
+  bool WaitForDisplayReady(std::chrono::milliseconds timeout);
 
   void UpdateDisplayModes();
 
@@ -83,6 +92,9 @@ protected:
 
 private:
   bool m_HdmiModeTriggered = false;
+  bool m_displayLostSignaled = false;
+  CEvent m_displayResetEvent{true, true};
+  std::atomic<std::chrono::steady_clock::rep> m_modeChangeStart{0};
   bool m_dispModesUpdatePending = false;
   void UpdateResolutions(bool bUpdateDesktopRes);
 };

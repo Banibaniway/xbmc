@@ -70,6 +70,7 @@
 #include <algorithm>
 #include <chrono>
 #include <cstdint>
+#include <cstdlib>
 #include <map>
 #include <memory>
 #include <ranges>
@@ -9722,17 +9723,18 @@ void CVideoDatabase::GetMoviesByName(const std::string& strSearch, CFileItemList
 
     if (m_profileManager.GetMasterProfile().getLockMode() != LockMode::EVERYONE &&
         !g_passwordManager.bMasterUser)
-      strSQL = PrepareSQL("SELECT movie.idMovie, movie.c%02d, path.strPath, movie.idSet FROM movie "
+      strSQL = PrepareSQL("SELECT movie.idMovie, movie.c%02d, movie.premiered, path.strPath, "
+                          "movie.idSet, files.playCount FROM movie "
                           "INNER JOIN files ON files.idFile=movie.idFile INNER JOIN path ON "
                           "path.idPath=files.idPath "
-                          "WHERE movie.c%02d LIKE '%%%s%%' OR movie.c%02d LIKE '%%%s%%'",
-                          VIDEODB_ID_TITLE, VIDEODB_ID_TITLE, strSearch.c_str(),
-                          VIDEODB_ID_ORIGINALTITLE, strSearch.c_str());
+                          "WHERE movie.c%02d LIKE '%%%s%%'",
+                          VIDEODB_ID_TITLE, VIDEODB_ID_TITLE, strSearch.c_str());
     else
-      strSQL = PrepareSQL("SELECT movie.idMovie,movie.c%02d, movie.idSet FROM movie WHERE "
-                          "movie.c%02d like '%%%s%%' OR movie.c%02d LIKE '%%%s%%'",
-                          VIDEODB_ID_TITLE, VIDEODB_ID_TITLE, strSearch.c_str(),
-                          VIDEODB_ID_ORIGINALTITLE, strSearch.c_str());
+      strSQL = PrepareSQL("SELECT movie.idMovie, movie.c%02d, movie.premiered, movie.idSet, "
+                          "files.playCount FROM movie "
+                          "INNER JOIN files ON files.idFile=movie.idFile "
+                          "WHERE movie.c%02d LIKE '%%%s%%'",
+                          VIDEODB_ID_TITLE, VIDEODB_ID_TITLE, strSearch.c_str());
     m_pDS->query( strSQL );
 
     while (!m_pDS->eof())
@@ -9747,7 +9749,10 @@ void CVideoDatabase::GetMoviesByName(const std::string& strSearch, CFileItemList
 
       int movieId = m_pDS->fv("movie.idMovie").get_asInt();
       int setId = m_pDS->fv("movie.idSet").get_asInt();
-      auto pItem = std::make_shared<CFileItem>(m_pDS->fv(1).get_asString());
+      const std::string title = m_pDS->fv(1).get_asString();
+      // premiered holds either a full date or just a year
+      const std::string premiered = m_pDS->fv(2).get_asString();
+      auto pItem = std::make_shared<CFileItem>(title);
       std::string path;
       if (setId <= 0 || !CServiceBroker::GetSettingsComponent()->GetSettings()->GetBool(CSettings::SETTING_VIDEOLIBRARY_GROUPMOVIESETS))
         path = StringUtils::Format("videodb://movies/titles/{}", movieId);
@@ -9755,6 +9760,26 @@ void CVideoDatabase::GetMoviesByName(const std::string& strSearch, CFileItemList
         path = StringUtils::Format("videodb://movies/sets/{}/{}", setId, movieId);
       pItem->SetPath(std::move(path));
       pItem->SetFolder(false);
+
+      // Give the skin what it needs to show the result: ids, year and artwork
+      CVideoInfoTag* tag = pItem->GetVideoInfoTag();
+      tag->m_iDbId = movieId;
+      tag->m_type = MediaTypeMovie;
+      tag->SetTitle(title);
+      tag->SetYear(std::atoi(premiered.substr(0, 4).c_str()));
+      tag->SetPlayCount(m_pDS->fv("files.playCount").get_asInt());
+
+      KODI::ART::Artwork art;
+      if (GetArtForItem(movieId, MediaTypeMovie, art))
+      {
+        for (const char* artType : {"poster", "fanart", "landscape"})
+        {
+          const auto it = art.find(artType);
+          if (it != art.end())
+            pItem->SetArt(artType, it->second);
+        }
+      }
+
       items.Add(std::move(pItem));
       m_pDS->next();
     }

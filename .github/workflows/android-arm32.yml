@@ -1,0 +1,113 @@
+name: Android ARM32 APK
+
+# Build Kodi 22.0rc1 + black-OSD fix + movie-only search for 32-bit ARM (Fire TV 4K Max gen 1),
+# using Kodi's own CI build steps (tools/buildsteps/android/*), as the Jenkins CI does.
+# Runs on every push to this branch. The APK is uploaded as an artifact.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [final]
+
+env:
+  # variables read by tools/buildsteps/defaultenv and the android build steps
+  WORKSPACE: ${{ github.workspace }}
+  Configuration: Release
+  NDK_VERSION: "28.2.13676358"
+  SDK_PATH: /home/runner/android-tools/android-sdk-linux
+  TARBALLS: /home/runner/android-tools/xbmc-tarballs
+  # Gradle refuses two different SDK paths; the runner image presets ANDROID_SDK_ROOT
+  ANDROID_HOME: /home/runner/android-tools/android-sdk-linux
+  ANDROID_SDK_ROOT: /home/runner/android-tools/android-sdk-linux
+  # file name of the APK (getBuildRevDateStr)
+  BUILD_TIMESTAMP: ${{ github.run_number }}
+  GIT_COMMIT: ${{ github.sha }}
+  Revision: final1
+  BUILD_ID: ${{ github.run_id }}
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 355
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/share/boost /opt/hostedtoolcache/CodeQL /usr/share/swift || true
+          sudo apt-get clean
+          df -h /
+
+      - name: Install packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y autoconf bison build-essential curl flex gawk gperf libcurl4-openssl-dev unzip zip zlib1g-dev lib32stdc++6 lib32z1 cmake ninja-build
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Android SDK + NDK
+        env:
+          KODI_KEYSTORE_B64: ${{ secrets.KODI_KEYSTORE_B64 }}
+        run: |
+          mkdir -p "$SDK_PATH" "$TARBALLS"
+          curl -sSL -o /tmp/cmdtools.zip https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
+          unzip -q /tmp/cmdtools.zip -d "$SDK_PATH/cmdline-tools-tmp"
+          mkdir -p "$SDK_PATH/cmdline-tools"
+          mv "$SDK_PATH/cmdline-tools-tmp/cmdline-tools" "$SDK_PATH/cmdline-tools/latest"
+          yes | "$SDK_PATH/cmdline-tools/latest/bin/sdkmanager" --sdk_root="$SDK_PATH" --licenses >/dev/null || true
+          "$SDK_PATH/cmdline-tools/latest/bin/sdkmanager" --sdk_root="$SDK_PATH" platform-tools "platforms;android-35" "build-tools;35.0.0" "ndk;$NDK_VERSION"
+          mkdir -p ~/.android
+          if [ -z "$KODI_KEYSTORE_B64" ]; then
+            echo "ERROR: repository secret KODI_KEYSTORE_B64 is missing or empty"
+            exit 1
+          fi
+          # fixed signing key (repository secret): every build can update the previous one
+          echo "$KODI_KEYSTORE_B64" | base64 -d > ~/.android/debug.keystore
+          keytool -list -keystore ~/.android/debug.keystore -storepass android | grep -q "0D:16:9C:A3:10:A8:2E:34" \
+            || { echo "ERROR: the signing key in the secret is not the expected one"; exit 1; }
+          echo "Using the fixed signing key from the KODI_KEYSTORE_B64 secret"
+
+      # --- Kodi's own build steps (same order as the Jenkins job) ---
+      - name: prepare-depends
+        run: .github/ci-run.sh prepare-depends env BUILDTHREADS=$(nproc) bash tools/buildsteps/android/prepare-depends
+
+      - name: configure-depends
+        run: .github/ci-run.sh configure-depends env BUILDTHREADS=$(nproc) bash tools/buildsteps/android/configure-depends
+
+      # make-depends builds native tools AND target libs. make-native-depends is NOT run on its own:
+      # it would tag tools/depends as built and make-depends would then skip the target libs.
+      - name: make-depends
+        run: .github/ci-run.sh make-depends env BUILDTHREADS=$(nproc) bash tools/buildsteps/android/make-depends
+
+      - name: prepare-xbmc
+        run: .github/ci-run.sh prepare-xbmc env BUILDTHREADS=$(nproc) bash tools/buildsteps/android/prepare-xbmc
+
+      - name: configure-xbmc
+        run: .github/ci-run.sh configure-xbmc env BUILDTHREADS=$(nproc) bash tools/buildsteps/android/configure-xbmc
+
+      - name: make-xbmc
+        run: .github/ci-run.sh make-xbmc env BUILDTHREADS=$(nproc) bash tools/buildsteps/android/make-xbmc
+
+      - name: package
+        run: |
+          .github/ci-run.sh package env BUILDTHREADS=$(nproc) bash tools/buildsteps/android/package
+          ls -l "$WORKSPACE"/*.apk
+          echo "::notice title=apk files::$(ls -l "$WORKSPACE"/*.apk | tr '\n' ' ')"
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: kodi-22.0rc1-arm32-final1
+          path: ${{ github.workspace }}/kodi-*.apk
+          if-no-files-found: error
+
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-logs
+          path: /tmp/*.log
+          if-no-files-found: ignore

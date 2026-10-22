@@ -830,6 +830,11 @@ void CCurlFile::ParseAndCorrectUrl(CURL &url2)
   if( url2.IsProtocol("ftp")
    || url2.IsProtocol("ftps") )
   {
+    // "mimetype" is added internally by CDirectoryFactory::Create(), it is not a user option:
+    // drop it silently so that it does not trigger the deprecation warning below
+    if (url2.HasOption("mimetype"))
+      url2.RemoveOption("mimetype");
+
     // we was using url options for urls, keep the old code work and warning
     if (!url2.GetOptions().empty())
     {

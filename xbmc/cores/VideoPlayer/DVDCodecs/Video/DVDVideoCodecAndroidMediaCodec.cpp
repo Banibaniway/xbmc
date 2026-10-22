@@ -34,12 +34,14 @@
 #include "utils/TimeUtils.h"
 #include "utils/log.h"
 #include "windowing/android/AndroidUtils.h"
+#include "windowing/android/WinSystemAndroid.h"
 
 #include "platform/android/activity/JNIXBMCSurfaceTextureOnFrameAvailableListener.h"
 #include "platform/android/activity/XBMCApp.h"
 
 #include <array>
 #include <cassert>
+#include <chrono>
 #include <memory>
 #include <mutex>
 #include <utility>
@@ -898,6 +900,16 @@ bool CDVDVideoCodecAndroidMediaCodec::Open(CDVDStreamInfo &hints, CDVDCodecOptio
 
   if (m_render_surface)
   {
+    // After a refresh rate change the HDMI link drops for about a second. A video surface
+    // created before the link is back can end up with a dead (black) overlay plane on this
+    // hardware, so wait for the display before creating the video view.
+    if (auto* winSystem = dynamic_cast<CWinSystemAndroid*>(CServiceBroker::GetWinSystem()))
+    {
+      if (!winSystem->WaitForDisplayReady(std::chrono::milliseconds(4000)))
+        CLog::Log(LOGWARNING,
+                  "CDVDVideoCodecAndroidMediaCodec::Open display not back after 4 s, continuing");
+    }
+
     m_jnivideoview.reset(jni::CJNIXBMCVideoView::createVideoView(this));
     if (!m_jnivideoview || !m_jnivideoview->waitForSurface(2000))
     {

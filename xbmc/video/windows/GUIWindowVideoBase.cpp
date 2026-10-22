@@ -48,6 +48,7 @@
 #include "settings/AdvancedSettings.h"
 #include "settings/Settings.h"
 #include "settings/SettingsComponent.h"
+#include "settings/SkinSettings.h"
 #include "settings/dialogs/GUIDialogContentSettings.h"
 #include "storage/MediaManager.h"
 #include "utils/FileExtensionProvider.h"
@@ -1338,9 +1339,15 @@ void CGUIWindowVideoBase::OnSearch()
     for (int i = 0; i < items.Size(); i++)
     {
       CFileItemPtr pItem = items[i];
-      pDlgSelect->Add(pItem->GetLabel());
+      if (pItem->HasVideoInfoTag() && pItem->GetVideoInfoTag()->GetPlayCount() > 0)
+        pItem->SetLabel2(CServiceBroker::GetResourcesComponent().GetLocalizeStrings().Get(16102));
+      pDlgSelect->Add(*pItem);
     }
 
+    // Skin setting "SearchFilmsPosterList": detailed list (poster + watched state) when on
+    auto& skinSettings = CSkinSettings::GetInstance();
+    pDlgSelect->SetUseDetails(
+        skinSettings.GetBool(skinSettings.TranslateBool("SearchFilmsPosterList")));
     pDlgSelect->Open();
 
     int iItem = pDlgSelect->GetSelectedItem();
