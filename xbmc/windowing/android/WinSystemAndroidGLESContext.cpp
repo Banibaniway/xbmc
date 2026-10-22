@@ -187,6 +187,14 @@ int CWinSystemAndroidGLESContext::GetBufferAge()
                                                                 : CWinSystemBase::GetBufferAge();
 }
 
+bool CWinSystemAndroidGLESContext::RefreshGuiSurface()
+{
+  m_pGLContext.DestroySurface();
+  const bool ok = CreateSurface() && m_pGLContext.BindContext();
+  CLog::LogF(LOGINFO, "GUI surface refreshed: {}", ok ? "ok" : "FAILED");
+  return ok;
+}
+
 bool CWinSystemAndroidGLESContext::CreateSurface()
 {
   if (!m_pGLContext.CreateSurface(static_cast<EGLNativeWindowType>(m_nativeWindow->GetWindow()),

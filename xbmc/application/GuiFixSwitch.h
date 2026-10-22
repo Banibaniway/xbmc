@@ -53,4 +53,18 @@ inline bool ModeOrderNexusEnabled()
                                 XFILE::CFile::Exists("special://profile/modeorder_off.txt"));
   return enabled;
 }
+
+/*!
+ * \brief Runtime switch for the one-time GUI surface refresh during video start (diagnostic).
+ *
+ * On by default: about 3 s after the video layer has been switched on, the GUI EGL surface is
+ * recreated once and the whole GUI redrawn. An empty file "surface_refresh_off" (or
+ * "surface_refresh_off.txt") in the userdata folder disables it at the next start.
+ */
+inline bool SurfaceRefreshEnabled()
+{
+  static const bool enabled = !(XFILE::CFile::Exists("special://profile/surface_refresh_off") ||
+                                XFILE::CFile::Exists("special://profile/surface_refresh_off.txt"));
+  return enabled;
+}
 } // namespace KODI::GUIFIX

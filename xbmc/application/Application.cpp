@@ -1648,6 +1648,9 @@ void CApplication::FrameMove(bool processEvents, bool processGUI)
     // outdated (possibly opaque black) frame on screen: force one GUI redraw on every change.
     {
       static bool s_lastVideoLayer = false;
+      static std::chrono::steady_clock::time_point s_layerOnSince;
+      static bool s_refreshDone = false;
+      static int s_refreshRedraw = 0;
       const bool videoLayer = appPlayer->IsRenderingVideoLayer();
       if (videoLayer != s_lastVideoLayer)
       {
@@ -1656,6 +1659,25 @@ void CApplication::FrameMove(bool processEvents, bool processGUI)
         if (KODI::GUIFIX::Enabled())
           CServiceBroker::GetGUI()->GetWindowManager().MarkDirty();
         s_lastVideoLayer = videoLayer;
+        s_layerOnSince = videoLayer ? std::chrono::steady_clock::now()
+                                    : std::chrono::steady_clock::time_point{};
+        s_refreshDone = false;
+      }
+
+      // diagnostic: one-time recreation of the GUI surface 3 s after the video layer is on
+      if (videoLayer && !s_refreshDone && KODI::GUIFIX::SurfaceRefreshEnabled() &&
+          std::chrono::steady_clock::now() - s_layerOnSince >= std::chrono::milliseconds(3000))
+      {
+        s_refreshDone = true;
+        CLog::LogF(LOGINFO, "REFRESH: recreating the GUI surface now (3 s after video layer on)");
+        if (CServiceBroker::GetWinSystem()->RefreshGuiSurface())
+          s_refreshRedraw = 8;
+      }
+      if (s_refreshRedraw > 0)
+      {
+        --s_refreshRedraw;
+        CServiceBroker::GetGUI()->GetWindowManager().MarkDirty();
+        m_skipGuiRender = false;
       }
     }
 

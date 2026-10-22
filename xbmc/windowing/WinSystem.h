@@ -80,6 +80,9 @@ public:
   virtual bool SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, bool blankOtherDisplays) = 0;
   virtual void SetDirtyRegions(const CDirtyRegionList& dirtyRegionsList) {}
   virtual int GetBufferAge() { return 2; }
+
+  //! \brief Destroy and recreate the GUI render surface (diagnostic). Returns true if done.
+  virtual bool RefreshGuiSurface() { return false; }
   //! \brief Bits per color channel of the presented output.
   virtual int GetOutputBitDepth() const { return 8; }
   virtual bool MoveWindow(int topLeft, int topRight){return false;}
