@@ -20,6 +20,8 @@
 
 #include "platform/android/activity/XBMCApp.h"
 
+#include "cores/AudioEngine/Utils/AudioSeekDiag.h"
+
 #include <numeric>
 
 #include <androidjni/AudioFormat.h>
@@ -675,7 +677,7 @@ void CAESinkAUDIOTRACK::GetDelay(AEDelayStatus& status)
   // latency works way better but is not available everyhwere
   const int latency = m_at_jni->getLatency();
   const bool isRawPt = m_passthrough && !m_info.m_wantsIECPassthrough;
-  if (!isRawPt && latency != -1)
+  if (!AudioSeekDiag::Flag(4) && !isRawPt && latency != -1)
   {
     m_hw_delay = latency / 1000.0;
     // would include entire pipeline including audiotrack buffer
@@ -766,6 +768,7 @@ void CAESinkAUDIOTRACK::GetDelay(AEDelayStatus& status)
     delay = 0.0;
 
   delay += (m_pause_ms / 1000.0);
+  AudioSeekDiag::NoteDelay(delay * 1000.0, m_hw_delay * 1000.0, m_pause_ms);
   const double d = GetMovingAverageDelay(delay);
 
   // Audiotrack is caching more than we thought it would
@@ -795,6 +798,8 @@ unsigned int CAESinkAUDIOTRACK::AddPackets(uint8_t **data, unsigned int frames, 
   if (!IsInitialized())
     return INT_MAX;
 
+  AudioSeekDiag::NoteWrite(frames);
+
   // If the sink did not move twice the buffer size at least 400 ms in time it was opened
   // take action. Some sinks open with e.g. 128 ms nicely but under the
   // hood need a bit more samples to start moving on sink start.
@@ -805,7 +810,9 @@ unsigned int CAESinkAUDIOTRACK::AddPackets(uint8_t **data, unsigned int frames, 
   bool forceBlock = false;
   if (!isRawPt)
   {
-    const double max_stuck_delay_ms = std::max((m_audiotrackbuffer_sec_orig * 2000.0), 400.0);
+    const double max_stuck_delay_ms =
+        AudioSeekDiag::Flag(5) ? m_audiotrackbuffer_sec_orig * 2000.0
+                               : std::max((m_audiotrackbuffer_sec_orig * 2000.0), 400.0);
     const double stime_ms = 1000.0 * frames / m_format.m_sampleRate;
 
     if (m_superviseAudioDelay)
@@ -817,7 +824,8 @@ unsigned int CAESinkAUDIOTRACK::AddPackets(uint8_t **data, unsigned int frames, 
         usleep(max_stuck_delay_ms * 1000);
         return INT_MAX;
       }
-      else if (m_stuckCounter * stime_ms >= m_audiotrackbuffer_sec_orig * 1000.0)
+      else if (!AudioSeekDiag::Flag(5) &&
+               m_stuckCounter * stime_ms >= m_audiotrackbuffer_sec_orig * 1000.0)
       {
         CLog::LogF(LOGDEBUG, "Sink filling too fast - throttleing - Fillstate: {} ms!",
                    (m_stuckCounter * stime_ms));
@@ -1001,11 +1009,20 @@ void CAESinkAUDIOTRACK::Drain()
     return;
 
   CLog::Log(LOGDEBUG, "Draining Audio");
+  CLog::Log(LOGINFO, "AUDIOSEEK Drain() passthrough={} lever3={}", m_passthrough,
+            AudioSeekDiag::Flag(3));
   if (IsInitialized())
   {
-    m_at_jni->stop();
-    // stay ready
-    m_at_jni->pause();
+    if (m_passthrough && AudioSeekDiag::Flag(3))
+    {
+      // keep the AudioTrack running so that the IEC61937 link is not interrupted
+    }
+    else
+    {
+      m_at_jni->stop();
+      // stay ready
+      m_at_jni->pause();
+    }
   }
   m_duration_written = 0;
   m_headPos = 0;

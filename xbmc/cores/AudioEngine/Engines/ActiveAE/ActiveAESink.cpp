@@ -14,6 +14,7 @@
 #include "cores/AudioEngine/Utils/AEBitstreamPacker.h"
 #include "cores/AudioEngine/Utils/AEStreamInfo.h"
 #include "cores/AudioEngine/Utils/AEUtil.h"
+#include "cores/AudioEngine/Utils/AudioSeekDiag.h"
 #include "utils/EndianSwap.h"
 #include "utils/MemUtils.h"
 #include "utils/log.h"
@@ -302,7 +303,17 @@ void CActiveAESink::StateMachine(int signal, Protocol *port, Message *msg)
           return;
 
         case CSinkControlProtocol::FLUSH:
+          AudioSeekDiag::MarkFlush();
+          CLog::Log(LOGINFO, "AUDIOSEEK sink FLUSH state={} streaming={} iecPack={}", m_state,
+                    m_extStreaming, m_needIecPack);
           ReturnBuffers();
+          if (AudioSeekDiag::Flag(2) && m_needIecPack &&
+              (m_state == S_TOP_CONFIGURED_PLAY || m_state == S_TOP_CONFIGURED_SILENCE))
+          {
+            // keep the IEC61937 link alive: go straight to pause bursts
+            m_state = S_TOP_CONFIGURED_SILENCE;
+            m_extTimeout = 0ms;
+          }
           msg->Reply(CSinkControlProtocol::ACC);
           return;
 
@@ -404,6 +415,7 @@ void CActiveAESink::StateMachine(int signal, Protocol *port, Message *msg)
         {
         case CSinkControlProtocol::STREAMING:
           m_extStreaming = *(bool*)msg->data;
+          CLog::Log(LOGINFO, "AUDIOSEEK sink STREAMING={} state={}", m_extStreaming, m_state);
           SetSilenceTimer();
           if (!m_extSilenceTimer.IsTimePast())
           {
@@ -586,6 +598,17 @@ void CActiveAESink::StateMachine(int signal, Protocol *port, Message *msg)
         switch (signal)
         {
         case CSinkControlProtocol::TIMEOUT:
+          if (AudioSeekDiag::Flag(2) && m_needIecPack)
+          {
+            // do not queue more than ~100 ms of pause bursts in front of the real data
+            AEDelayStatus st;
+            m_sink->GetDelay(st);
+            if (st.GetDelay() > 0.1)
+            {
+              m_extTimeout = 10ms;
+              return;
+            }
+          }
           OutputSamples(&m_sampleOfSilence);
           if (m_extError)
           {
@@ -1088,6 +1111,7 @@ unsigned int CActiveAESink::OutputSamples(CSampleBuffer* samples)
     {
       if (frames > 0)
       {
+        AudioSeekDiag::S().kind = "DATA";
         m_packer->Reset();
         m_packer->Pack(m_sinkFormat.m_streamInfo, buffer[0], frames);
       }
@@ -1095,6 +1119,27 @@ unsigned int CActiveAESink::OutputSamples(CSampleBuffer* samples)
       {
         // construct a pause burst if we have already output valid audio
         bool burst = m_extStreaming && (m_packer->GetBuffer()[0] != 0);
+        {
+          static int lastKind = -1;
+          const int kind = burst ? 1 : 0;
+          if (kind != lastKind)
+          {
+            lastKind = kind;
+            CLog::Log(LOGINFO,
+                      "AUDIOSEEK silence would be written as {} (streaming={} firstByte={:#x} "
+                      "lever1={} lever2={})",
+                      burst ? "IEC pause burst" : "ZEROS", m_extStreaming,
+                      m_packer->GetBuffer()[0], AudioSeekDiag::Flag(1), AudioSeekDiag::Flag(2));
+          }
+        }
+        if (AudioSeekDiag::Flag(1) || AudioSeekDiag::Flag(2))
+        {
+          // never send zero filled silence inside an IEC61937 stream
+          if (!burst)
+            m_packer->Reset(); // PackPause would re-use a previous (zero) buffer
+          burst = true;
+        }
+        AudioSeekDiag::S().kind = burst ? "IEC-PAUSE" : "ZEROS";
         if (!m_packer->PackPause(m_sinkFormat.m_streamInfo, samples->pkt->pause_burst_ms, burst))
           skipSwap = true;
       }

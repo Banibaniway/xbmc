@@ -19,6 +19,7 @@
 #include "cores/AudioEngine/Utils/AEStreamData.h"
 #include "cores/AudioEngine/Utils/AEStreamInfo.h"
 #include "cores/AudioEngine/Utils/AEUtil.h"
+#include "cores/AudioEngine/Utils/AudioSeekDiag.h"
 #include "cores/DataCacheCore.h"
 #include "settings/Settings.h"
 #include "settings/SettingsComponent.h"
@@ -744,6 +745,7 @@ void CActiveAE::StateMachine(int signal, Protocol *port, Message *msg)
         case CActiveAEControlProtocol::PAUSESTREAM:
           CActiveAEStream *stream;
           stream = *(CActiveAEStream**)msg->data;
+          CLog::Log(LOGINFO, "AUDIOSEEK PAUSESTREAM alreadyPaused={}", stream->m_paused);
           if (!stream->m_paused && m_streams.size() == 1)
           {
             FlushEngine();
@@ -754,6 +756,7 @@ void CActiveAE::StateMachine(int signal, Protocol *port, Message *msg)
           return;
         case CActiveAEControlProtocol::RESUMESTREAM:
           stream = *(CActiveAEStream**)msg->data;
+          CLog::Log(LOGINFO, "AUDIOSEEK RESUMESTREAM wasPaused={}", stream->m_paused);
           if (stream->m_paused)
             stream->m_syncState = CAESyncInfo::AESyncState::SYNC_START;
           stream->m_paused = false;
@@ -1627,17 +1630,22 @@ void CActiveAE::SFlushStream(CActiveAEStream *stream)
   stream->m_syncError.Flush();
   stream->ResetFreeBuffers();
 
-  // Reset Logic State Variables to revive Servo
-  stream->m_lastPts = 0.0;
-  stream->m_lastPtsJump = 0.0;
-  stream->m_errorInterval = std::chrono::milliseconds(1000);
-
-  // Synchronously reset servo state to prevent stale cache interaction.
-  // This MUST be done before m_stats.UpdateStream(stream) is called.
-  stream->m_resampleIntegral = 0.0;
-  if (stream->m_processingBuffers)
+  CLog::Log(LOGINFO, "AUDIOSEEK SFlushStream mode={} lever6={}", static_cast<int>(m_mode),
+            AudioSeekDiag::Flag(6));
+  if (!AudioSeekDiag::Flag(6))
   {
-    stream->m_processingBuffers->SetRR(1.0, m_settings.atempoThreshold);
+    // Reset Logic State Variables to revive Servo
+    stream->m_lastPts = 0.0;
+    stream->m_lastPtsJump = 0.0;
+    stream->m_errorInterval = std::chrono::milliseconds(1000);
+
+    // Synchronously reset servo state to prevent stale cache interaction.
+    // This MUST be done before m_stats.UpdateStream(stream) is called.
+    stream->m_resampleIntegral = 0.0;
+    if (stream->m_processingBuffers)
+    {
+      stream->m_processingBuffers->SetRR(1.0, m_settings.atempoThreshold);
+    }
   }
 
   // flush the engine if we only have a single stream
