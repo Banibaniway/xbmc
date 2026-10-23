@@ -673,9 +673,11 @@ void CAESinkAUDIOTRACK::GetDelay(AEDelayStatus& status)
   double delay = m_duration_written - gone;
 
   // latency works way better but is not available everyhwere
-  const int latency = m_at_jni->getLatency();
-  const bool isRawPt = m_passthrough && !m_info.m_wantsIECPassthrough;
-  if (!isRawPt && latency != -1)
+  // Not used for passthrough (IEC or RAW): the reported latency is not reliably consistent
+  // with the timestamp API after a seek, which makes the A/V sync servo apply audible
+  // corrections (pause bursts) right after the seek.
+  const int latency = m_passthrough ? -1 : m_at_jni->getLatency();
+  if (latency != -1)
   {
     m_hw_delay = latency / 1000.0;
     // would include entire pipeline including audiotrack buffer
