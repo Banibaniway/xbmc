@@ -112,7 +112,10 @@ void CGUIFadeLabelControl::Process(unsigned int currentTime, CDirtyRegionList &d
     bool moveToNextLabel = false;
     if (!m_scrollOut)
     {
-      if (m_scrollInfo.m_pixelPos + m_width > m_scrollInfo.m_textWidth)
+      // Only test for the end of the text once its width is known: during the initial wait
+      // m_textWidth is still 0, which would wrongly start the fade-out right away.
+      if (m_scrollInfo.m_widthValid &&
+          m_scrollInfo.m_pixelPos + m_width > m_scrollInfo.m_textWidth)
       {
         if (m_fadeAnim.GetProcess() != ANIM_PROCESS_NORMAL)
           m_fadeAnim.QueueAnimation(ANIM_PROCESS_NORMAL);
