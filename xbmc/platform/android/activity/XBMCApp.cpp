@@ -779,7 +779,12 @@ void CXBMCApp::SetDisplayMode(int mode, float rate)
   m_displayChangeEvent.Reset();
 
   if (m_hdmiSource)
-    dynamic_cast<CWinSystemAndroid*>(CServiceBroker::GetWinSystem())->InitiateModeChange();
+  {
+    const auto& components = CServiceBroker::GetAppComponents();
+    const auto appPlayer = components.GetComponent<CApplicationPlayer>();
+    if (appPlayer->IsPlaying())
+      dynamic_cast<CWinSystemAndroid*>(CServiceBroker::GetWinSystem())->BeginModeChange();
+  }
 
   std::map<std::string, CVariant> vmap;
   vmap["mode"] = mode;
@@ -787,7 +792,19 @@ void CXBMCApp::SetDisplayMode(int mode, float rate)
   CVariant *variant = new CVariant(vmap);
   runNativeOnUiThread(SetDisplayModeCallback, variant);
   if (g_application.IsInitialized())
+  {
     m_displayChangeEvent.Wait(5000ms);
+
+    // Kodi 20 order: the display is declared lost only once it has confirmed the new mode,
+    // and only while playing
+    if (m_hdmiSource)
+    {
+      const auto& components = CServiceBroker::GetAppComponents();
+      const auto appPlayer = components.GetComponent<CApplicationPlayer>();
+      if (appPlayer->IsPlaying())
+        dynamic_cast<CWinSystemAndroid*>(CServiceBroker::GetWinSystem())->InitiateModeChange();
+    }
+  }
 }
 
 int CXBMCApp::android_printf(const char* format, ...)

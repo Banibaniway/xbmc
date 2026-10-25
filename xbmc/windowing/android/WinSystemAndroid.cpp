@@ -246,12 +246,38 @@ void CWinSystemAndroid::SetHdmiState(bool connected)
       resource->OnResetDisplay();
     m_dispResetTimer->Stop();
     m_HdmiModeTriggered = false;
+    m_displayLostSignaled = false;
+    m_displayResetEvent.Set();
   }
   else
   {
+    // The mode change already told the resources the display is lost; the HDMI_AUDIO_PLUG
+    // intent that follows must not do it a second time (it blocked the Android UI thread).
+    if (m_displayLostSignaled)
+      return;
+    m_displayLostSignaled = true;
+    m_displayResetEvent.Reset();
     for (auto resource : m_resources)
       resource->OnLostDisplay();
   }
+}
+
+void CWinSystemAndroid::BeginModeChange()
+{
+  m_modeChangeStart = std::chrono::steady_clock::now().time_since_epoch().count();
+  m_displayResetEvent.Reset();
+}
+
+bool CWinSystemAndroid::WaitForDisplayReady(std::chrono::milliseconds timeout)
+{
+  // never wait longer than \p timeout after the start of the mode change
+  const auto start = std::chrono::steady_clock::time_point(
+      std::chrono::steady_clock::duration(m_modeChangeStart.load()));
+  const auto elapsed = std::chrono::steady_clock::now() - start;
+  const auto remaining = std::chrono::duration_cast<std::chrono::milliseconds>(timeout - elapsed);
+  if (remaining <= std::chrono::milliseconds::zero())
+    return m_displayResetEvent.Wait(std::chrono::milliseconds::zero());
+  return m_displayResetEvent.Wait(remaining);
 }
 
 void CWinSystemAndroid::UpdateDisplayModes()

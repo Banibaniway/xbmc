@@ -5144,7 +5144,11 @@ void CVideoPlayer::OnLostDisplay()
   m_VideoPlayerVideo->SendMessage(std::make_shared<CDVDMsgBool>(CDVDMsg::GENERAL_PAUSE, true), 1);
   m_clock.Pause(true);
   m_displayLost = true;
-  FlushRenderer();
+  // Do not wait for the main thread: this is called from the Android UI thread, which the
+  // main thread needs (vsync callback) while it is busy presenting. Waiting here made both
+  // threads block each other for the full 1 s timeout. The flush is still done, just
+  // asynchronously by the main thread.
+  m_renderManager.Flush(false, true);
 }
 
 void CVideoPlayer::OnResetDisplay()
