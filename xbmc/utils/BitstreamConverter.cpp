@@ -964,6 +964,12 @@ bool CBitstreamConverter::BitstreamConvert(uint8_t* pData,
       if (m_removeDovi && (unit_type == HEVC_NAL_UNSPEC62 || unit_type == HEVC_NAL_UNSPEC63))
         write_buf = false;
 
+      // Drop HEVC suffix SEI NAL units (e.g. the one some WEB-DL encodes put after every IDR
+      // picture). They are not needed for display, and the MediaTek HEVC decoder of recent
+      // Fire OS versions loses 1 to 3 output frames at each IRAP followed by one.
+      if (m_codec == AV_CODEC_ID_HEVC && unit_type == HEVC_NAL_SEI_SUFFIX)
+        write_buf = false;
+
       // Try removing HDR10+ only if the NAL is big enough, optimization
       if (m_removeHdr10Plus && unit_type == HEVC_NAL_SEI_PREFIX && nal_size >= 7)
       {
