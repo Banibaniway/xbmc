@@ -7,7 +7,7 @@ name: Android ARM32 APK
 on:
   workflow_dispatch:
   push:
-    branches: [final3]
+    branches: [final4]
 
 env:
   # variables read by tools/buildsteps/defaultenv and the android build steps
@@ -22,7 +22,7 @@ env:
   # file name of the APK (getBuildRevDateStr)
   BUILD_TIMESTAMP: ${{ github.run_number }}
   GIT_COMMIT: ${{ github.sha }}
-  Revision: final3
+  Revision: final4
   BUILD_ID: ${{ github.run_id }}
 
 jobs:
@@ -100,7 +100,7 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: kodi-22.0rc1-arm32-final3
+          name: kodi-22.0rc1-arm32-final4
           path: ${{ github.workspace }}/kodi-*.apk
           if-no-files-found: error
 

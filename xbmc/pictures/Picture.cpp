@@ -248,6 +248,10 @@ bool CPicture::CacheTexture(uint8_t *pixels, uint32_t width, uint32_t height, ui
 
   uint32_t max_width = max_height * 16/9;
 
+  // wide banners (ratio above 3) may use bannerRes as their maximal width
+  if (advancedSettings->m_bannerRes > 0 && width > 3 * height)
+    max_width = std::max(max_width, advancedSettings->m_bannerRes);
+
   dest_height = std::min(dest_height, max_height);
   dest_width  = std::min(dest_width, max_width);
 
