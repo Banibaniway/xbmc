@@ -47,6 +47,7 @@ public:
   bool CanFocus() const override;
   void SetInfo(const KODI::GUILIB::GUIINFO::CGUIInfoLabel &info);
   void SetAutoScrolling(const TiXmlNode *node);
+  void SetEllipsis(const TiXmlNode* node);
   void SetAutoScrolling(int delay, int time, int repeatTime, const std::string &condition = "");
   void ResetAutoScrolling();
   void AssignDepth() override;
@@ -92,6 +93,9 @@ protected:
   CAnimation *m_autoScrollRepeatAnim;
 
   int m_pageControl;
+
+  // end the last visible line with "..." when more text follows
+  bool m_ellipsis{false};
 
   KODI::GUILIB::GUIINFO::CGUIInfoLabel m_info;
 };

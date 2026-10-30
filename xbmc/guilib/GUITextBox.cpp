@@ -14,6 +14,7 @@
 #include "guilib/GUIComponent.h"
 #include "guilib/guiinfo/GUIInfoLabels.h"
 #include "utils/MathUtils.h"
+#include "utils/XMLUtils.h"
 #include "windowing/WinSystem.h"
 
 #include <algorithm>
@@ -52,6 +53,7 @@ CGUITextBox::CGUITextBox(const CGUITextBox& from)
   : CGUIControl(from), CGUITextLayout(from), m_autoScrollCondition(from.m_autoScrollCondition)
 {
   m_pageControl = from.m_pageControl;
+  m_ellipsis = from.m_ellipsis;
   m_scrollTime = from.m_scrollTime;
   m_autoScrollTime = from.m_autoScrollTime;
   m_autoScrollDelay = from.m_autoScrollDelay;
@@ -251,8 +253,31 @@ void CGUITextBox::Render()
         if (!lineString.m_text.empty() && lineString.m_carriageReturn)
           align &= ~XBFONT_JUSTIFIED; // last line of a paragraph shouldn't be justified
 
-        m_font->DrawVScrollingText(posX, posY, m_colors, m_label.shadowColor, lineString.m_text,
-                                   align, m_width, m_scrollSpeed != 0.0f);
+        // last fully visible line and more text follows: end it with "..."
+        const bool lastLine = m_ellipsis && !m_autoScrollTime && m_scrollSpeed == 0.0f &&
+                              current + 1 < static_cast<int>(m_lines.size()) &&
+                              posY + 2 * m_itemHeight > m_posY + m_renderHeight + 0.5f;
+        if (lastLine)
+        {
+          vecText text = lineString.m_text;
+          const character_t style = text.empty() ? 0 : (text.back() & 0xFFFF0000);
+          if (!lineString.m_carriageReturn)
+            text.insert(text.end(), m_lines[current + 1].m_text.begin(),
+                        m_lines[current + 1].m_text.end());
+          if (lineString.m_carriageReturn || m_font->GetTextWidth(text) <= m_width)
+          {
+            text = lineString.m_text;
+            text.push_back(style | ' ');
+            text.insert(text.end(), 3, style | '.');
+          }
+          align &= ~XBFONT_JUSTIFIED;
+          align |= XBFONT_TRUNCATED;
+          m_font->DrawVScrollingText(posX, posY, m_colors, m_label.shadowColor, text, align,
+                                     m_width, false);
+        }
+        else
+          m_font->DrawVScrollingText(posX, posY, m_colors, m_label.shadowColor, lineString.m_text,
+                                     align, m_width, m_scrollSpeed != 0.0f);
         posY += m_itemHeight;
         current++;
       }
@@ -361,6 +386,12 @@ void CGUITextBox::ScrollToOffset(int offset, bool autoScroll)
   int timeToScroll = autoScroll ? m_autoScrollTime : m_scrollTime;
   m_scrollSpeed = (offset * m_itemHeight - m_scrollOffset) / timeToScroll;
   m_offset = offset;
+}
+
+void CGUITextBox::SetEllipsis(const TiXmlNode* node)
+{
+  if (node)
+    XMLUtils::GetBoolean(node, "ellipsis", m_ellipsis);
 }
 
 void CGUITextBox::SetAutoScrolling(const TiXmlNode *node)

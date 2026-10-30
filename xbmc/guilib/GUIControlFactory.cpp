@@ -1674,6 +1674,7 @@ CGUIControl* CGUIControlFactory::Create(int parentID,
       if (!infoLabels.empty())
         tcontrol->SetInfo(infoLabels[0]);
       tcontrol->SetAutoScrolling(pControlNode);
+      tcontrol->SetEllipsis(pControlNode);
       tcontrol->SetMinHeight(minHeight);
 
       break;
