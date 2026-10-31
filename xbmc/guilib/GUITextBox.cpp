@@ -253,10 +253,10 @@ void CGUITextBox::Render()
         if (!lineString.m_text.empty() && lineString.m_carriageReturn)
           align &= ~XBFONT_JUSTIFIED; // last line of a paragraph shouldn't be justified
 
-        // last fully visible line and more text follows: end it with "..."
+        // last line drawn and more text follows: end it with "..."
         const bool lastLine = m_ellipsis && !m_autoScrollTime && m_scrollSpeed == 0.0f &&
                               current + 1 < static_cast<int>(m_lines.size()) &&
-                              posY + 2 * m_itemHeight > m_posY + m_renderHeight + 0.5f;
+                              posY + m_itemHeight >= m_posY + m_renderHeight - 0.5f;
         if (lastLine)
         {
           // cut at a word boundary so that "text..." fits in the width of the control
