@@ -218,6 +218,16 @@ void CGUITextBox::Render()
     float posX = m_posX;
     float posY = m_posY + offset * m_itemHeight - m_scrollOffset;
 
+    // the parent (e.g. a grouplist) may clip us shorter than m_renderHeight
+    const float visibleHeight =
+        m_ellipsis ? std::max(0.0f, std::min(m_renderHeight,
+                                             CServiceBroker::GetWinSystem()
+                                                     ->GetGfxContext()
+                                                     .GetClipRegion()
+                                                     .y2 -
+                                                 m_posY))
+                   : m_renderHeight;
+
     uint32_t alignment = m_label.align;
 
     if (alignment & XBFONT_CENTER_Y)
@@ -260,7 +270,7 @@ void CGUITextBox::Render()
         // last line drawn and more text follows: end it with "..."
         const bool lastLine = m_ellipsis && !m_autoScrollTime && m_scrollSpeed == 0.0f &&
                               current + 1 < static_cast<int>(m_lines.size()) &&
-                              posY + m_itemHeight >= m_posY + m_renderHeight - 0.5f;
+                              posY + m_itemHeight >= m_posY + visibleHeight - 0.5f;
         if (lastLine)
         {
           // cut at a word boundary so that "text..." fits in the width of the control
