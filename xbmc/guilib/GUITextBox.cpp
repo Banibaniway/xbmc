@@ -18,6 +18,7 @@
 #include "windowing/WinSystem.h"
 
 #include <algorithm>
+#include <cmath>
 
 #include <tinyxml.h>
 
@@ -223,7 +224,10 @@ void CGUITextBox::Render()
     {
       if (m_font)
       {
-        float textHeight = m_font->GetTextHeight(std::min((unsigned int)m_lines.size(), m_itemsPerPage));
+        // number of lines drawn: those starting inside the control
+        const unsigned int drawn = std::min<unsigned int>(
+            m_lines.size(), static_cast<unsigned int>(std::ceil(m_renderHeight / m_itemHeight - 0.01f)));
+        float textHeight = m_font->GetTextHeight(drawn);
 
         if (textHeight <= m_renderHeight)
           posY += (m_renderHeight - textHeight) * 0.5f;
