@@ -259,19 +259,40 @@ void CGUITextBox::Render()
                               posY + 2 * m_itemHeight > m_posY + m_renderHeight + 0.5f;
         if (lastLine)
         {
+          // cut at a word boundary so that "text..." fits in the width of the control
           vecText text = lineString.m_text;
           const character_t style = text.empty() ? 0 : (text.back() & 0xFFFF0000);
-          if (!lineString.m_carriageReturn)
-            text.insert(text.end(), m_lines[current + 1].m_text.begin(),
-                        m_lines[current + 1].m_text.end());
-          if (lineString.m_carriageReturn || m_font->GetTextWidth(text) <= m_width)
+          const auto isCut = [](character_t c)
           {
-            text = lineString.m_text;
-            text.push_back(style | ' ');
-            text.insert(text.end(), 3, style | '.');
+            const character_t ch = c & 0xFFFF;
+            return ch == ' ' || ch == ',' || ch == ';' || ch == ':' || ch == '-' || ch == 0x2013 ||
+                   ch == 0x2014;
+          };
+          const auto trimEnd = [&isCut](vecText& t)
+          {
+            while (!t.empty() && isCut(t.back()))
+              t.pop_back();
+          };
+          vecText dots(3, style | '.');
+          trimEnd(text);
+          while (!text.empty())
+          {
+            vecText candidate = text;
+            candidate.insert(candidate.end(), dots.begin(), dots.end());
+            if (m_font->GetTextWidth(candidate) <= m_width)
+              break;
+            // drop the last word, or the last character if there is a single word
+            size_t pos = text.size();
+            while (pos > 0 && (text[pos - 1] & 0xFFFF) != ' ')
+              pos--;
+            if (pos > 0)
+              text.resize(pos - 1);
+            else
+              text.pop_back();
+            trimEnd(text);
           }
+          text.insert(text.end(), dots.begin(), dots.end());
           align &= ~XBFONT_JUSTIFIED;
-          align |= XBFONT_TRUNCATED;
           m_font->DrawVScrollingText(posX, posY, m_colors, m_label.shadowColor, text, align,
                                      m_width, false);
         }
