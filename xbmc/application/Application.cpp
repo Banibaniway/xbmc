@@ -1622,7 +1622,12 @@ void CApplication::FrameMove(bool processEvents, bool processGUI)
     }
 
     if (!m_bStop)
+    {
+      // Event handling above can block for a long time; refresh the clock so
+      // animations start now rather than at the previous frame's time.
+      CTimeUtils::UpdateFrameTime(true);
       CServiceBroker::GetGUI()->GetWindowManager().Process(CTimeUtils::GetFrameTime());
+    }
 
     // Dirty-driven skip: on paths with a persistent framebuffer (D2P plane or
     // HDR GUI compositing FBO), skip Render when no controls dirtied themselves
