@@ -25,6 +25,11 @@
 namespace
 {
 auto startTime = std::chrono::steady_clock::now();
+auto lastRender = std::chrono::steady_clock::now();
+unsigned int onTimeFrames = 0;
+
+constexpr unsigned int SETTLED_FRAMES = 3;
+constexpr std::chrono::milliseconds MAX_SETTLED_AGE{50};
 }
 
 int64_t CurrentHostCounter(void)
@@ -80,6 +85,22 @@ void CTimeUtils::UpdateFrameTime(bool flip)
 unsigned int CTimeUtils::GetFrameTime()
 {
   return frameTime;
+}
+
+void CTimeUtils::FrameRendered()
+{
+  const auto now = std::chrono::steady_clock::now();
+  // a frame is on time when it took at most 1.5 refresh periods
+  const std::chrono::duration<float, std::milli> budget{
+      1500.0f / CServiceBroker::GetWinSystem()->GetGfxContext().GetFPS()};
+  onTimeFrames = (now - lastRender <= budget) ? onTimeFrames + 1 : 0;
+  lastRender = now;
+}
+
+bool CTimeUtils::IsRenderSettled()
+{
+  return onTimeFrames >= SETTLED_FRAMES &&
+         std::chrono::steady_clock::now() - lastRender < MAX_SETTLED_AGE;
 }
 
 CDateTime CTimeUtils::GetLocalTime(time_t time)

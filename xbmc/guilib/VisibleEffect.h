@@ -208,6 +208,10 @@ private:
   unsigned int m_delay;
   unsigned int m_amount;
 
+  // entry animations wait for rendering to settle before they start
+  bool m_settling;
+  unsigned int m_settleStart;
+
   std::vector<CAnimEffect *> m_effects;
 };
 

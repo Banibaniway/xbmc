@@ -32,6 +32,18 @@ public:
    * @note Not threadsafe
    */
   static unsigned int GetFrameTime();
+
+  /*!
+   * @brief Record that a GUI frame has just been rendered
+   * @note Not threadsafe
+   */
+  static void FrameRendered();
+
+  /*!
+   * @brief Returns true once consecutive GUI frames were rendered on time
+   * @note Not threadsafe
+   */
+  static bool IsRenderSettled();
   static CDateTime GetLocalTime(time_t time);
   
   /*!

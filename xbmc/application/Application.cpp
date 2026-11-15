@@ -973,6 +973,8 @@ void CApplication::Render()
                                                        appPlayer->IsRenderingVideoLayer());
 
   CTimeUtils::UpdateFrameTime(hasRendered);
+  if (hasRendered)
+    CTimeUtils::FrameRendered();
 }
 
 bool CApplication::OnAction(const CAction &action)

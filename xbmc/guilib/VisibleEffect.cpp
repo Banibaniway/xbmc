@@ -17,6 +17,7 @@
 #include "guilib/GUIComponent.h"
 #include "utils/ColorUtils.h"
 #include "utils/StringUtils.h"
+#include "utils/TimeUtils.h"
 #include "utils/XBMCTinyXML.h"
 #include "utils/XMLUtils.h"
 #include "utils/log.h"
@@ -411,6 +412,8 @@ CAnimation::CAnimation()
   m_delay = 0;
   m_start = 0;
   m_amount = 0;
+  m_settling = false;
+  m_settleStart = 0;
 }
 
 CAnimation::CAnimation(const CAnimation &src)
@@ -440,6 +443,8 @@ CAnimation &CAnimation::operator =(const CAnimation &src)
   m_length = src.m_length;
   m_delay = src.m_delay;
   m_amount = src.m_amount;
+  m_settling = src.m_settling;
+  m_settleStart = src.m_settleStart;
   // clear all our effects
   for (unsigned int i = 0; i < m_effects.size(); i++)
     delete m_effects[i];
@@ -471,6 +476,9 @@ void CAnimation::Animate(unsigned int time, bool startAnim)
   // First start any queued animations
   if (m_queuedProcess == ANIM_PROCESS_NORMAL)
   {
+    m_settling = (m_type == ANIM_TYPE_WINDOW_OPEN || m_type == ANIM_TYPE_VISIBLE) &&
+                 m_currentProcess != ANIM_PROCESS_REVERSE;
+    m_settleStart = time;
     if (m_currentProcess == ANIM_PROCESS_REVERSE)
       m_start = time - m_amount;  // reverse direction of animation
     else
@@ -479,6 +487,7 @@ void CAnimation::Animate(unsigned int time, bool startAnim)
   }
   else if (m_queuedProcess == ANIM_PROCESS_REVERSE)
   {
+    m_settling = false;
     if (m_currentProcess == ANIM_PROCESS_NORMAL)
       m_start = time - (m_length - m_amount); // reverse direction of animation
     else if (m_currentProcess == ANIM_PROCESS_NONE)
@@ -491,6 +500,20 @@ void CAnimation::Animate(unsigned int time, bool startAnim)
   // Update our animation process
   if (m_currentProcess == ANIM_PROCESS_NORMAL)
   {
+    if (m_settling)
+    {
+      constexpr unsigned int MAX_SETTLE_TIME = 250;
+      const unsigned int waited = time - m_settleStart;
+      if (CTimeUtils::IsRenderSettled() || waited >= MAX_SETTLE_TIME)
+      {
+        m_settling = false;
+        if (waited > 0)
+          CLog::Log(LOGDEBUG, "CAnimation: type {} held {} ms until rendering settled",
+                    static_cast<int>(m_type), waited);
+      }
+      m_start = time;
+    }
+
     if (time - m_start < m_delay)
     {
       m_amount = 0;
@@ -541,6 +564,7 @@ void CAnimation::Animate(unsigned int time, bool startAnim)
 
 void CAnimation::ResetAnimation()
 {
+  m_settling = false;
   m_queuedProcess = ANIM_PROCESS_NONE;
   m_currentProcess = ANIM_PROCESS_NONE;
   m_currentState = ANIM_STATE_NONE;
