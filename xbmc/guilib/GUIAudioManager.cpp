@@ -27,6 +27,10 @@
 
 #include <mutex>
 
+#if defined(TARGET_ANDROID)
+#include "platform/android/UISoundAndroid.h"
+#endif
+
 using namespace KODI;
 
 CGUIAudioManager::CGUIAudioManager()
@@ -332,13 +336,21 @@ std::shared_ptr<IAESound> CGUIAudioManager::LoadSound(const std::string& filenam
       m_soundCache.erase(it); // cleanup orphaned cache entry
   }
 
-  IAE *ae = CServiceBroker::GetActiveAE();
-  if (!ae)
-    return nullptr;
+  std::shared_ptr<IAESound> sound;
+#if defined(TARGET_ANDROID)
+  sound = CUISoundAndroid::Create(filename);
+#endif
 
-  std::shared_ptr<IAESound> sound(ae->MakeSound(filename));
   if (!sound)
-    return nullptr;
+  {
+    IAE* ae = CServiceBroker::GetActiveAE();
+    if (!ae)
+      return nullptr;
+
+    sound = ae->MakeSound(filename);
+    if (!sound)
+      return nullptr;
+  }
 
   m_soundCache[filename] = sound;
 

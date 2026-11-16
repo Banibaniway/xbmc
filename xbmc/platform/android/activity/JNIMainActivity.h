@@ -12,6 +12,8 @@
 #include <androidjni/InputManager.h>
 #include <androidjni/Rect.h>
 
+#include <string>
+
 namespace jni
 {
 
@@ -38,6 +40,11 @@ public:
   static void runNativeOnUiThread(void (*callback)(void*), void* variant);
 
   CJNIRect getDisplayRect();
+
+  int loadUiSound(const std::string& path);
+  int playUiSound(int soundId, float volume);
+  void stopUiSound(int streamId);
+  void unloadUiSound(int soundId);
 
 private:
   static CJNIMainActivity *m_appInstance;

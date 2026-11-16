@@ -9,7 +9,9 @@ import android.content.Intent;
 import android.content.pm.ResolveInfo;
 import android.graphics.Rect;
 import android.hardware.input.InputManager;
+import android.media.AudioAttributes;
 import android.media.AudioManager;
+import android.media.SoundPool;
 import android.os.Build;
 import android.os.Build.VERSION_CODES;
 import android.os.Bundle;
@@ -50,6 +52,7 @@ public class Main extends NativeActivity implements Choreographer.FrameCallback
     }
   }
   private ArrayList<DelayedIntent> mDelayedIntents = new ArrayList<>();
+  private SoundPool mUiSoundPool = null;
   private boolean mPaused = true;
   private static boolean mActivityRunning = false;
 
@@ -324,6 +327,46 @@ public class Main extends NativeActivity implements Choreographer.FrameCallback
   {
     _onVisibleBehindCanceled();
     super.onVisibleBehindCanceled();
+  }
+
+  public synchronized int loadUiSound(String path)
+  {
+    try
+    {
+      if (mUiSoundPool == null)
+      {
+        AudioAttributes attributes = new AudioAttributes.Builder()
+            .setUsage(AudioAttributes.USAGE_ASSISTANCE_SONIFICATION)
+            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+            .build();
+        mUiSoundPool = new SoundPool.Builder().setMaxStreams(4).setAudioAttributes(attributes).build();
+      }
+      return mUiSoundPool.load(path, 1);
+    }
+    catch (Exception e)
+    {
+      Log.e(TAG, "Main: loadUiSound: " + e.getMessage());
+      return 0;
+    }
+  }
+
+  public synchronized int playUiSound(int soundId, float volume)
+  {
+    if (mUiSoundPool == null)
+      return 0;
+    return mUiSoundPool.play(soundId, volume, volume, 1, 0, 1f);
+  }
+
+  public synchronized void stopUiSound(int streamId)
+  {
+    if (mUiSoundPool != null)
+      mUiSoundPool.stop(streamId);
+  }
+
+  public synchronized void unloadUiSound(int soundId)
+  {
+    if (mUiSoundPool != null)
+      mUiSoundPool.unload(soundId);
   }
 
   @Override

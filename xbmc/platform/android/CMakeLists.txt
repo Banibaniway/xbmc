@@ -2,11 +2,13 @@ set(SOURCES CPUInfoAndroid.cpp
             GPUInfoAndroid.cpp
             MemUtils.cpp
             PlatformAndroid.cpp
+            UISoundAndroid.cpp
             ${NDKROOT}/sources/android/cpufeatures/cpu-features.c)
 
 set(HEADERS CPUInfoAndroid.h
             GPUInfoAndroid.h
-            PlatformAndroid.h)
+            PlatformAndroid.h
+            UISoundAndroid.h)
 
 set_source_files_properties(${NDKROOT}/sources/android/cpufeatures/cpu-features.c PROPERTIES
                             SKIP_LINTING ON)

@@ -161,3 +161,23 @@ CJNIRect CJNIMainActivity::getDisplayRect()
   return call_method<jhobject>(m_context,
                                "getDisplayRect", "()Landroid/graphics/Rect;");
 }
+
+int CJNIMainActivity::loadUiSound(const std::string& path)
+{
+  return call_method<int>(m_context, "loadUiSound", "(Ljava/lang/String;)I", jcast<jhstring>(path));
+}
+
+int CJNIMainActivity::playUiSound(int soundId, float volume)
+{
+  return call_method<int>(m_context, "playUiSound", "(IF)I", soundId, volume);
+}
+
+void CJNIMainActivity::stopUiSound(int streamId)
+{
+  call_method<void>(m_context, "stopUiSound", "(I)V", streamId);
+}
+
+void CJNIMainActivity::unloadUiSound(int soundId)
+{
+  call_method<void>(m_context, "unloadUiSound", "(I)V", soundId);
+}
