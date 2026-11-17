@@ -99,33 +99,26 @@ bool ShouldCheckForChanges(const std::string& specialType, const std::string& ur
   return !isHTTP;
 }
 
-// Size limits (localartres) for a local image named after its art type,
+// Maximal height (localartres) for a local image named after its art type,
 // e.g. "Movie (2020)-poster.jpg" or "poster.jpg"
-void GetLocalArtLimits(const std::string& file, uint32_t& maxHeight, uint32_t& maxWidth)
+uint32_t GetLocalArtMaxHeight(const std::string& file)
 {
-  maxHeight = 0;
-  maxWidth = 0;
-
   const auto& limits =
       CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->m_localArtRes;
   if (limits.empty() || StringUtils::StartsWith(file, "http://") ||
       StringUtils::StartsWith(file, "https://"))
-    return;
+    return 0;
 
   std::string name = StringUtils::ToLower(URIUtils::GetFileName(file));
   URIUtils::RemoveExtension(name);
 
   for (const auto& [type, res] : limits)
   {
-    if (res == 0 || (name != type && !StringUtils::EndsWith(name, "-" + type)))
-      continue;
-
-    if (type == "banner")
-      maxWidth = res;
-    else
-      maxHeight = res;
-    return;
+    if (res > 0 && (name == type || StringUtils::EndsWith(name, "-" + type)))
+      return res;
   }
+
+  return 0;
 }
 } // namespace
 
@@ -165,14 +158,12 @@ bool CTextureCacheJob::CacheTexture(std::unique_ptr<CTexture>* out_texture)
 
     unsigned int cached_width = 0;
     unsigned int cached_height = 0;
-    uint32_t maxHeight = 0;
-    uint32_t maxWidth = 0;
-    if (imageURL.GetSpecialType().empty())
-      GetLocalArtLimits(image, maxHeight, maxWidth);
+    const uint32_t maxHeight =
+        imageURL.GetSpecialType().empty() ? GetLocalArtMaxHeight(image) : 0;
 
     if (CPicture::CacheTexture(texture.get(), cached_width, cached_height,
                                CTextureCache::GetCachedPath(m_details.file),
-                               CPictureScalingAlgorithm::NoAlgorithm, maxHeight, maxWidth))
+                               CPictureScalingAlgorithm::NoAlgorithm, maxHeight))
     {
       m_details.width = cached_width;
       m_details.height = cached_height;

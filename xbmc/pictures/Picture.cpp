@@ -217,18 +217,17 @@ bool CPicture::CacheTexture(CTexture* texture,
                             const std::string& dest,
                             CPictureScalingAlgorithm::Algorithm
                                 scalingAlgorithm /* = CPictureScalingAlgorithm::NoAlgorithm */,
-                            uint32_t maxHeight /* = 0 */,
-                            uint32_t maxWidth /* = 0 */)
+                            uint32_t maxHeight /* = 0 */)
 {
   return CacheTexture(texture->GetPixels(), texture->GetWidth(), texture->GetHeight(), texture->GetPitch(),
                       texture->GetOrientation(), dest_width, dest_height, dest, scalingAlgorithm,
-                      maxHeight, maxWidth);
+                      maxHeight);
 }
 
 bool CPicture::CacheTexture(uint8_t *pixels, uint32_t width, uint32_t height, uint32_t pitch, int orientation,
   uint32_t &dest_width, uint32_t &dest_height, const std::string &dest,
   CPictureScalingAlgorithm::Algorithm scalingAlgorithm /* = CPictureScalingAlgorithm::NoAlgorithm */,
-  uint32_t maxHeight /* = 0 */, uint32_t maxWidth /* = 0 */)
+  uint32_t maxHeight /* = 0 */)
 {
   const std::shared_ptr<CAdvancedSettings> advancedSettings = CServiceBroker::GetSettingsComponent()->GetAdvancedSettings();
 
@@ -256,11 +255,6 @@ bool CPicture::CacheTexture(uint8_t *pixels, uint32_t width, uint32_t height, ui
   {
     max_height = maxHeight;
     max_width = UINT32_MAX;
-  }
-  else if (maxWidth > 0)
-  {
-    max_width = maxWidth;
-    max_height = UINT32_MAX;
   }
 
   dest_height = std::min(dest_height, max_height);

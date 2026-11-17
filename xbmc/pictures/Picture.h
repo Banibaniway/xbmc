@@ -58,8 +58,6 @@ public:
    \param dest_height [in/out] maximum height in pixels of cached version - replaced with actual cached height
    \param dest the output cache file
    \param maxHeight if not 0, replaces the default maximal height (the width is then not limited)
-   \param maxWidth if not 0 and maxHeight is 0, replaces the default maximal width (the height is
-   then not limited)
    \return true if successful, false otherwise
    */
   static bool CacheTexture(
@@ -68,12 +66,11 @@ public:
       uint32_t& dest_height,
       const std::string& dest,
       CPictureScalingAlgorithm::Algorithm scalingAlgorithm = CPictureScalingAlgorithm::NoAlgorithm,
-      uint32_t maxHeight = 0,
-      uint32_t maxWidth = 0);
+      uint32_t maxHeight = 0);
   static bool CacheTexture(uint8_t *pixels, uint32_t width, uint32_t height, uint32_t pitch, int orientation,
     uint32_t &dest_width, uint32_t &dest_height, const std::string &dest,
     CPictureScalingAlgorithm::Algorithm scalingAlgorithm = CPictureScalingAlgorithm::NoAlgorithm,
-    uint32_t maxHeight = 0, uint32_t maxWidth = 0);
+    uint32_t maxHeight = 0);
 
   static void GetScale(unsigned int width, unsigned int height, unsigned int &out_width, unsigned int &out_height);
   static bool ScaleImage(
