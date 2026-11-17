@@ -216,15 +216,19 @@ bool CPicture::CacheTexture(CTexture* texture,
                             uint32_t& dest_height,
                             const std::string& dest,
                             CPictureScalingAlgorithm::Algorithm
-                                scalingAlgorithm /* = CPictureScalingAlgorithm::NoAlgorithm */)
+                                scalingAlgorithm /* = CPictureScalingAlgorithm::NoAlgorithm */,
+                            uint32_t maxHeight /* = 0 */,
+                            uint32_t maxWidth /* = 0 */)
 {
   return CacheTexture(texture->GetPixels(), texture->GetWidth(), texture->GetHeight(), texture->GetPitch(),
-                      texture->GetOrientation(), dest_width, dest_height, dest, scalingAlgorithm);
+                      texture->GetOrientation(), dest_width, dest_height, dest, scalingAlgorithm,
+                      maxHeight, maxWidth);
 }
 
 bool CPicture::CacheTexture(uint8_t *pixels, uint32_t width, uint32_t height, uint32_t pitch, int orientation,
   uint32_t &dest_width, uint32_t &dest_height, const std::string &dest,
-  CPictureScalingAlgorithm::Algorithm scalingAlgorithm /* = CPictureScalingAlgorithm::NoAlgorithm */)
+  CPictureScalingAlgorithm::Algorithm scalingAlgorithm /* = CPictureScalingAlgorithm::NoAlgorithm */,
+  uint32_t maxHeight /* = 0 */, uint32_t maxWidth /* = 0 */)
 {
   const std::shared_ptr<CAdvancedSettings> advancedSettings = CServiceBroker::GetSettingsComponent()->GetAdvancedSettings();
 
@@ -248,9 +252,16 @@ bool CPicture::CacheTexture(uint8_t *pixels, uint32_t width, uint32_t height, ui
 
   uint32_t max_width = max_height * 16/9;
 
-  // wide banners (ratio above 3) may use bannerRes as their maximal width
-  if (advancedSettings->m_bannerRes > 0 && width > 3 * height)
-    max_width = std::max(max_width, advancedSettings->m_bannerRes);
+  if (maxHeight > 0)
+  {
+    max_height = maxHeight;
+    max_width = UINT32_MAX;
+  }
+  else if (maxWidth > 0)
+  {
+    max_width = maxWidth;
+    max_height = UINT32_MAX;
+  }
 
   dest_height = std::min(dest_height, max_height);
   dest_width  = std::min(dest_width, max_width);

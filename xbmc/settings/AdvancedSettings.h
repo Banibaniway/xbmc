@@ -264,7 +264,9 @@ class CAdvancedSettings : public ISettingCallback, public ISettingsHandler
 
     unsigned int m_fanartRes; ///< \brief the maximal resolution to cache fanart at (assumes 16x9)
     unsigned int m_imageRes;  ///< \brief the maximal resolution to cache images at (assumes 16x9)
-    unsigned int m_bannerRes; ///< \brief the maximal width to cache wide banners at (0: use imageRes)
+    /*! \brief maximal size to cache local images at, by art type. A height, except for
+        "banner" which is a width. */
+    std::map<std::string, unsigned int> m_localArtRes;
     CPictureScalingAlgorithm::Algorithm m_imageScalingAlgorithm;
     unsigned int
         m_imageQualityJpeg; ///< \brief the stored jpeg quality the lower the better (default: 4)

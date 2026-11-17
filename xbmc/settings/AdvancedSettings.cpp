@@ -366,7 +366,7 @@ void CAdvancedSettings::Initialize()
 
   m_fanartRes = 1080;
   m_imageRes = 720;
-  m_bannerRes = 0;
+  m_localArtRes.clear();
   m_imageScalingAlgorithm = CPictureScalingAlgorithm::Default;
   m_imageQualityJpeg = 4;
 
@@ -1175,7 +1175,16 @@ void CAdvancedSettings::ParseSettingsFile(const std::string &file)
 
   XMLUtils::GetUInt(pRootElement, "fanartres", m_fanartRes, 0, 9999);
   XMLUtils::GetUInt(pRootElement, "imageres", m_imageRes, 0, 9999);
-  XMLUtils::GetUInt(pRootElement, "bannerres", m_bannerRes, 0, 9999);
+  if (const TiXmlElement* pLocalArt = pRootElement->FirstChildElement("localartres"))
+  {
+    for (const TiXmlElement* art = pLocalArt->FirstChildElement(); art;
+         art = art->NextSiblingElement())
+    {
+      uint32_t res = 0;
+      if (XMLUtils::GetUInt(pLocalArt, art->Value(), res, 0, 9999))
+        m_localArtRes[StringUtils::ToLower(art->Value())] = res;
+    }
+  }
   if (XMLUtils::GetString(pRootElement, "imagescalingalgorithm", tmp))
     m_imageScalingAlgorithm = CPictureScalingAlgorithm::FromString(tmp);
   XMLUtils::GetUInt(pRootElement, "imagequalityjpeg", m_imageQualityJpeg, 0, 21);
