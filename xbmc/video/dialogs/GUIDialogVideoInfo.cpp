@@ -443,29 +443,6 @@ void CGUIDialogVideoInfo::SetMovie(const CFileItem *item)
     }
   }
 
-  if (type == MediaTypeMovie)
-  {
-    // local trailers should always override non-local, so check
-    // for a local one if the registered trailer is online
-    if (m_movieItem->GetVideoInfoTag()->m_strTrailer.empty() ||
-        URIUtils::IsInternetStream(m_movieItem->GetVideoInfoTag()->m_strTrailer))
-    {
-      std::string localTrailer = VIDEO::UTILS::FindTrailer(*m_movieItem);
-      if (!localTrailer.empty())
-      {
-        m_movieItem->GetVideoInfoTag()->m_strTrailer = localTrailer;
-        CVideoDatabase database;
-        if (database.Open())
-        {
-          database.SetTrailerForMovie(m_movieItem->GetVideoInfoTag()->m_iDbId,
-                                      m_movieItem->GetVideoInfoTag()->m_strTrailer);
-          database.Close();
-          CUtil::DeleteVideoDatabaseDirectoryCache();
-        }
-      }
-    }
-  }
-
   m_castList->SetContent(CMediaTypes::ToPlural(type));
 
   CVideoThumbLoader loader;
