@@ -210,7 +210,13 @@ void CGUITextBox::Render()
   if (m_autoScrollRepeatAnim)
     CServiceBroker::GetWinSystem()->GetGfxContext().SetTransform(m_cachedTextMatrix);
 
-  if (CServiceBroker::GetWinSystem()->GetGfxContext().SetClipRegion(m_posX, m_posY, m_width, m_renderHeight))
+  // with a line spacing below 1, descenders of the last line extend below its line box
+  const float descender =
+      m_ellipsis && m_font ? std::max(0.0f, m_font->GetTextHeight(1) - m_font->GetLineHeight())
+                           : 0.0f;
+
+  if (CServiceBroker::GetWinSystem()->GetGfxContext().SetClipRegion(m_posX, m_posY, m_width,
+                                                                    m_renderHeight + descender))
   {
     // we offset our draw position to take into account scrolling and whether or not our focused
     // item is offscreen "above" the list.
